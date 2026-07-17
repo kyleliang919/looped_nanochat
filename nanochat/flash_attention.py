@@ -123,6 +123,71 @@ def sdpa_attn_func(q, k, v, causal=False, window_size=(-1, -1)):
     y = _sdpa_attention(q, k, v, window_size, enable_gqa)
     return y.transpose(1, 2)
 
+
+# =============================================================================
+# FlexAttention routing path
+# =============================================================================
+# The routing loop needs softmax((q.k + gate*(rq.rk)) / sqrt(D)) @ v. Encoding
+# that via width-2D concatenated Q/K forces plain SDPA off the fused kernel
+# (2-3x slower). FlexAttention keeps a fused, compiled Triton kernel even at the
+# wider head dim, so we route the training path through it. Equivalence:
+#   qa = cat(q, rq), ka = cat(k, gate*rk) => qa.ka = q.k + gate*(rq.rk)
+#   with softmax scale = 1/sqrt(D) this is exactly the additive-bias attention.
+_flex_attention = None
+_flex_block_mask_cache = {}
+
+
+def _get_flex_attention():
+    global _flex_attention
+    if _flex_attention is None:
+        from torch.nn.attention.flex_attention import flex_attention
+        _flex_attention = torch.compile(flex_attention, dynamic=False)
+    return _flex_attention
+
+
+def _get_routing_block_mask(T, window, device):
+    """Causal (optionally left-sliding-window) block mask, cached by (T, window)."""
+    from torch.nn.attention.flex_attention import create_block_mask
+    key = (T, window, str(device))
+    bm = _flex_block_mask_cache.get(key)
+    if bm is None:
+        if window is None or window < 0 or window >= T:
+            def mask_mod(b, h, qi, ki):
+                return qi >= ki
+        else:
+            def mask_mod(b, h, qi, ki):
+                return (qi >= ki) & (qi - ki <= window)
+        bm = create_block_mask(mask_mod, None, None, T, T, device=device)
+        _flex_block_mask_cache[key] = bm
+    return bm
+
+
+def flex_routing_attn_func(q, k, v, route_q, route_k, gate, window_size=(-1, -1)):
+    """Causal routing attention via FlexAttention.
+
+    q, k, v, route_q, route_k are (B, T, H, D) (route_k may share k's head count).
+    gate is a scalar tensor. Computes, causally (with optional left window):
+        softmax((q.k^T + gate * route_q.route_k^T) / sqrt(D)) @ v
+    Returns (B, T, H, D).
+    """
+    import math
+    B, T, H, D = q.shape
+    # Fold the gate into the routing keys, then concatenate along head_dim so the
+    # dot product carries the additive bias. Softmax scale stays 1/sqrt(D).
+    q_aug = torch.cat((q, route_q), dim=-1)                    # (B, T, H, 2D)
+    k_aug = torch.cat((k, gate.to(k.dtype) * route_k), dim=-1)  # (B, T, Hkv, 2D)
+    # FlexAttention wants (B, H, T, D)
+    q_aug = q_aug.transpose(1, 2)
+    k_aug = k_aug.transpose(1, 2)
+    v = v.transpose(1, 2)
+    enable_gqa = q_aug.size(1) != k_aug.size(1)
+    window = None if window_size[0] is None or window_size[0] < 0 else int(window_size[0])
+    block_mask = _get_routing_block_mask(T, window, q.device)
+    flex = _get_flex_attention()
+    y = flex(q_aug, k_aug, v, block_mask=block_mask, scale=1.0 / math.sqrt(D),
+             enable_gqa=enable_gqa)
+    return y.transpose(1, 2)
+
 # =============================================================================
 # Public API: Same interface as FA3
 # =============================================================================
@@ -207,4 +272,5 @@ flash_attn = SimpleNamespace(
     flash_attn_func=flash_attn_func,
     flash_attn_with_kvcache=flash_attn_with_kvcache,
     sdpa_attn_func=sdpa_attn_func,
+    flex_routing_attn_func=flex_routing_attn_func,
 )

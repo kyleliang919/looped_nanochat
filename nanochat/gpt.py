@@ -163,21 +163,23 @@ class CausalSelfAttention(nn.Module):
         else:
             # Exact low-rank additive bias without an NxN attention map. For D=head_dim:
             #   softmax((q2 k2^T + g qr kr^T) / sqrt(D))
-            # equals ordinary attention over concatenated, rescaled Q/K of width 2D.
+            # equals ordinary attention over concatenated Q/K. The training path
+            # uses FlexAttention (fused/compiled even at the wider head dim), which
+            # is ~2x faster than the width-2D SDPA fallback; the incremental-decode
+            # path keeps SDPA (Tq=1, correctness-sensitive, low throughput).
             route_q, route_k = routing_qk
             gate = F.softplus(routing_gate_logit.float()).to(dtype=q.dtype)
-            base_scale = 2.0 ** 0.25
-            route_scale = base_scale * torch.sqrt(gate.clamp_min(1e-8))
-            q_aug = torch.cat((base_scale * q, route_scale * route_q), dim=-1)
 
             if kv_cache is None:
-                k_aug = torch.cat((base_scale * k, route_scale * route_k), dim=-1)
-                y = flash_attn.sdpa_attn_func(
-                    q_aug, k_aug, v, causal=True, window_size=window_size
+                y = flash_attn.flex_routing_attn_func(
+                    q, k, v, route_q, route_k, gate, window_size=window_size
                 )
             else:
                 # Keep a normal pass-2 KV cache. We only concatenate the full keys
                 # transiently, reading route_k from the pass-1 source-layer cache.
+                base_scale = 2.0 ** 0.25
+                route_scale = base_scale * torch.sqrt(gate.clamp_min(1e-8))
+                q_aug = torch.cat((base_scale * q, route_scale * route_q), dim=-1)
                 pos = kv_cache.get_pos()
                 k_cache, v_cache = kv_cache.get_layer_cache(self.layer_idx)
                 k_cache[:, pos:pos+T] = k

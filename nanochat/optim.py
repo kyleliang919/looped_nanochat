@@ -279,8 +279,10 @@ class MuonAdamW(torch.optim.Optimizer):
             if world_size == 1:
                 # Single rank: no communication, update the full param in place
                 param_infos[p] = dict(future=None, grad_slice=grad, is_small=True)
-            elif p.numel() < 1024:
-                # Small params: all_reduce (no scatter/gather needed)
+            elif p.numel() < 1024 or grad.shape[0] % world_size != 0:
+                # Small params, or params whose leading dim is not divisible by
+                # world_size (e.g. routing pass_embeddings with shape[0]=2 on 4
+                # GPUs): all_reduce the full grad (no scatter/gather needed).
                 future = dist.all_reduce(grad, op=dist.ReduceOp.AVG, async_op=True).get_future()
                 param_infos[p] = dict(future=future, grad_slice=grad, is_small=True)
             else:

@@ -408,6 +408,11 @@ while True:
                     "n_kv_head": model.config.n_kv_head,
                     "n_embd": model.config.n_embd,
                     "window_pattern": model.config.window_pattern,
+                    "routing_loop": model.config.routing_loop,
+                    "routing_pattern": model.config.routing_pattern,
+                    "routing_gate_init": model.config.routing_gate_init,
+                    "routing_detach": model.config.routing_detach,
+                    "first_pass_loss_weight": model.config.first_pass_loss_weight,
                 },
                 "user_config": user_config, # inputs to the training script
             },
