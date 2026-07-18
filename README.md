@@ -1,4 +1,64 @@
-# nanochat
+# looped nanochat
+
+**A two-pass, shared-weight routing-loop Transformer built on [nanochat](https://github.com/karpathy/nanochat), and a controlled study of whether "looping" the model improves quality at fixed scale.**
+
+This repo forks [`karpathy/nanochat`](https://github.com/karpathy/nanochat) (@ `92d63d4`) and adds an experimental **routing loop**: the Transformer trunk is run **twice** per forward pass, with each second-pass layer receiving a causal attention-logit prior from a selected first-pass layer. The idea, the implementation, and a fully-matched baseline-vs-looped comparison at the **d24 (~1.38B param)** scale are the point of this repository.
+
+📄 **Full write-up:** [REPORT.md](REPORT.md) · [REPORT.pdf](REPORT.pdf)
+🤗 **Models:** [looped-nanochat-d24](https://huggingface.co/kz919/looped-nanochat-d24) · [baseline-nanochat-d24](https://huggingface.co/kz919/baseline-nanochat-d24)
+
+## How the loop works
+
+Standard nanochat is a single-pass causal Transformer. With `--routing-loop` (see [`nanochat/gpt.py`](nanochat/gpt.py)):
+
+1. **Pass 1** runs the ordinary causal Transformer and captures the normalized, RoPE-applied Q/K features from selected deeper layers.
+2. **Pass 2** re-runs the trunk from the token embeddings. Each pass-2 layer adds a causal attention-logit prior from one pass-1 layer:
+
+   ```
+   attn_logits = q2·k2ᵀ/√D  +  g · q1·k1ᵀ/√D
+   ```
+
+   where `g = softplus(gate_logit)` is a per-layer learned routing gate. The additive bias is computed via augmented-width Q/K + ordinary attention (**no N×N attention matrix is materialized**), and the training path runs it through a fused, compiled **FlexAttention** kernel. Everything is causal and differentiable; pass-2's loss backprops through pass-1 (unless `--routing-detach`), with a small pass-1 auxiliary loss.
+
+Only two tiny sets of parameters are added over baseline: `routing_gate_logits` (one per layer) and `pass_embeddings` (2×`n_embd`).
+
+## Results (identical training budget, full test sets)
+
+| Metric | Baseline | **Looped** | Δ |
+|---|---|---|---|
+| Base CORE (pretraining) | 0.2552 | **0.2783** | **+9.0% rel** |
+| ChatCORE (post-SFT) | 0.2253 | **0.2521** | **+11.9% rel** |
+| ARC-Easy | 62.04% | **68.01%** | +5.97 pp |
+| ARC-Challenge | 50.00% | **52.22%** | +2.22 pp |
+| MMLU | 37.06% | **37.96%** | +0.90 pp |
+| GSM8K | 2.88% | **4.17%** | +1.29 pp |
+| HumanEval | 10.98% | 10.98% | ±0.00 pp |
+
+The looped model **wins or ties every metric**, at ~2.4× the training compute (inherent to running the trunk twice, partly offset by the FlexAttention kernel path). Full methodology, cost/speed analysis, and engineering notes are in [REPORT.md](REPORT.md).
+
+## Reproduce
+
+Both scripts target a **4×H100** node (adjust `--nproc_per_node` for other configs; gradient accumulation auto-adjusts to keep the token budget fixed):
+
+```bash
+bash runs/speedrun_baseline.sh   # stock nanochat,  tag: baseline-d24
+bash runs/run_looped.sh          # routing loop on, tag: looped-d24
+```
+
+Then evaluate (either tag) on the full generative sets:
+
+```bash
+torchrun --standalone --nproc_per_node=4 -m scripts.chat_eval -- \
+    -i sft -g looped-d24 -a "GSM8K|HumanEval"
+```
+
+Key looped flags for `scripts.base_train`: `--routing-loop --routing-pattern=progressive --routing-gate-init=0.05` (optionally `--routing-detach`). The routing config is stored in each checkpoint's `meta`, so SFT/eval/inference rebuild the two-pass model automatically.
+
+---
+
+# nanochat (upstream)
+
+The rest of this README is the upstream nanochat documentation, retained for reference.
 
 ![nanochat logo](dev/nanochat.png)
 ![scaling laws](dev/scaling_laws_jan26.png)
