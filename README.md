@@ -54,6 +54,36 @@ torchrun --standalone --nproc_per_node=4 -m scripts.chat_eval -- \
 
 Key looped flags for `scripts.base_train`: `--routing-loop --routing-pattern=progressive --routing-gate-init=0.05` (optionally `--routing-detach`). The routing config is stored in each checkpoint's `meta`, so SFT/eval/inference rebuild the two-pass model automatically.
 
+## Future exploration
+
+Open directions, roughly ordered by how promising they seem given what we found:
+
+- **Train with a variable number of passes.** Test-time pass scaling was a clean
+  *negative* (see [REPORT.md](REPORT.md)): a model trained with a fixed 2 passes
+  degrades monotonically when looped ≥3× at inference. Randomizing `K` during
+  training (or a curriculum over `K`) is the natural way to try to unlock genuine
+  test-time compute scaling — this is a training change, not an inference lever.
+- **Scale the comparison.** All results here are at d24 (~1.38B params). Does the
+  +9% base-CORE / +12% ChatCORE gap widen, hold, or shrink with depth (d20 → d32)?
+  Is the ~2.4× compute overhead worth it vs. simply training a bigger single-pass
+  model for the same FLOPs? (An iso-FLOP baseline is the key missing experiment.)
+- **Routing patterns and gating.** Only `progressive` was tuned here. Sweep
+  `--routing-pattern` (`last`/`same`/`reverse`/`offset:*`), the number of source
+  layers, and `--routing-gate-init`; consider per-head or input-dependent gates.
+- **More than 2 trained passes / weight-tied recurrence.** A true K-pass trained
+  loop (Universal-Transformer-style) with the routing prior, and whether deeper
+  loops help reasoning-heavy tasks (GSM8K saw the biggest single-pass→loop gain).
+- **Faster decode.** Looped decode is latency-bound (~2× baseline per token,
+  inherent to the two passes). Two concrete wins are scoped but unimplemented:
+  (1) left-padded + masked **batched generation** (exact-length bucketing is in,
+  but real prompts rarely share lengths — see `Engine.generate_prompts`), and
+  (2) **CUDA-graph** single-stream decode (blocked on the FA3 kvcache kernel not
+  being `torch.compile`-traceable; would need manual graph capture or a
+  FlexAttention decode path).
+- **Where does the gain come from?** Ablate the pass-1 auxiliary loss
+  (`--first-pass-loss-weight`), `--routing-detach` (stop-grad through pass-1), and
+  the `backout`/`smear` interactions, to attribute the improvement.
+
 ---
 
 # nanochat (upstream)
