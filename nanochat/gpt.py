@@ -679,6 +679,64 @@ class GPT(nn.Module):
         return loss
 
     @torch.inference_mode()
+    def forward_iterated(self, idx, num_passes, targets=None, loss_reduction='mean'):
+        """Test-time scaling: run the routing loop for `num_passes` iterations.
+
+        Training only ever used 2 passes (pass 0 raw + pass 1 routed). Here we
+        generalize at INFERENCE ONLY (no training, no kv_cache): pass 0 runs raw
+        and captures Q/K; each subsequent pass routes from the *previous* pass's
+        captured Q/K and re-captures its own. num_passes=1 == pass-0-only,
+        num_passes=2 == the trained config, num_passes>=3 is out-of-distribution.
+        Returns logits (targets is None) or the final-pass loss.
+        """
+        assert self.config.routing_loop, "forward_iterated requires a routing_loop model"
+        assert num_passes >= 1
+        B, T = idx.size()
+        assert T <= self.cos.size(1)
+        cos_sin = self.cos[:, :T], self.sin[:, :T]
+
+        # Pass 0: raw, captures routing states.
+        x, routing_states = self._run_pass(idx, cos_sin, pass_idx=0, kv_cache=None)
+        # Passes 1..K-1: route from the previous pass's states, re-capturing each time.
+        for _ in range(1, num_passes):
+            x, routing_states = self._run_pass_iter(idx, cos_sin, routing_states)
+
+        logits = self._logits(x)
+        if targets is None:
+            return logits
+        return F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1),
+                               ignore_index=-1, reduction=loss_reduction)
+
+    def _run_pass_iter(self, idx, cos_sin, routing_states):
+        """Like _run_pass(pass_idx=1) but ALSO captures Q/K so it can feed the next
+        iteration (used only by forward_iterated for test-time pass scaling)."""
+        x = self._embed_tokens(idx, None, pass_idx=1)  # use the routed-pass embedding
+        x0 = x
+        n_layer = self.config.n_layer
+        backout_layer = n_layer // 2
+        x_backout = None
+        captured = {}
+        source_set = set(self.routing_source_layers)
+        for i, block in enumerate(self.transformer.h):
+            x = self.resid_lambdas[i] * x + self.x0_lambdas[i] * x0
+            ve = self.value_embeds[str(i)](idx).to(x.dtype) if str(i) in self.value_embeds else None
+            source = self.routing_source_for_target[i]
+            routing_qk = routing_states[source]
+            routing_gate_logit = self.routing_gate_logits[i]
+            x, route = block(
+                x, ve, cos_sin, self.window_sizes[i], None,
+                capture_routing=(i in source_set),
+                routing_qk=routing_qk, routing_gate_logit=routing_gate_logit,
+            )
+            if route is not None:
+                captured[i] = route
+            if i == backout_layer:
+                x_backout = x
+        if x_backout is not None:
+            x = x - self.backout_lambda.to(x.dtype) * x_backout
+        return norm(x), captured
+
+    @torch.inference_mode()
     def generate(self, tokens, max_tokens, temperature=1.0, top_k=None, seed=42):
         """
         Naive autoregressive streaming inference.

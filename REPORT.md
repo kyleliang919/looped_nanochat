@@ -144,6 +144,35 @@ All in `nanochat/`:
    Uses exact‑length bucketing for provable correctness; a padded/masked variant
    for larger real‑world speedups on variable‑length prompts is left as follow‑up.
 
+## Test‑time pass scaling (negative result)
+
+Since the architecture *is* a loop, a natural question is whether running **more
+than 2 passes at inference** — with no retraining — buys extra quality (a "free"
+test‑time‑compute knob). We generalized the forward to `K` iterations
+(`GPT.forward_iterated`, inference‑only: pass 0 raw + captures; each later pass
+routes from the previous pass's Q/K and re‑captures) and measured val bpb over
+21 M tokens (4×H100) as a function of `K`:
+
+| K passes | val bpb (↓) |
+|---|---|
+| 1 (pass‑0 only) | 0.72608 |
+| **2 (trained config)** | **0.71092** |
+| 3 | 0.72007 |
+| 4 | 0.72214 |
+| 5 | 0.72386 |
+| 6 | 0.72451 |
+| 8 | 0.72497 |
+
+**Inference‑only pass scaling does not work here.** K=2 (exactly what the model
+was trained with) is optimal; every additional pass monotonically *increases*
+bpb, asymptoting just past the untrained K=1 level. This is the expected
+consequence of the model never being trained to consume the routing prior
+recursively — extra passes re‑inject a signal the network can't iterate on, and
+it drifts. Getting real test‑time scaling out of the loop would require
+*training* with a variable/larger number of passes (e.g. randomizing K), which
+is a training change, not a free inference lever. Reproduce with
+[`scripts/tts_pass_scaling.py`](scripts/tts_pass_scaling.py).
+
 ## Reproduce
 
 ```bash
