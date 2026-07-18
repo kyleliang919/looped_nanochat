@@ -7,194 +7,171 @@
 <style>
   :root {
     color-scheme: light;
-    --surface-0: #f4f4f1;
-    --surface-1: #fcfcfb;
-    --surface-2: #efefea;
-    --border:    #e0e0d8;
-    --text-primary:   #0b0b0b;
-    --text-secondary: #52514e;
-    --text-muted:     #86857e;
-    --baseline: #2a78d6;   /* categorical slot 1 (blue) */
-    --looped:   #eb6834;   /* categorical slot 6 (orange) */
-    --grid: #e6e6df;
+    --surface-0: #f7f7f4;
+    --surface-1: #ffffff;
+    --surface-2: #f0f0ea;
+    --border:    #e4e4dc;
+    --border-strong: #d3d3c8;
+    --text-primary:   #14140f;
+    --text-secondary: #55554e;
+    --text-muted:     #8a897f;
+    --baseline: #2a78d6;
+    --looped:   #eb6834;
+    --baseline-soft: #eaf1fb;
+    --looped-soft:   #fcece4;
+    --grid: #eaeae2;
     --accent: #2a78d6;
+    --shadow: 0 1px 2px rgba(20,20,15,.04), 0 4px 16px rgba(20,20,15,.05);
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --surface-0: #141413;
-    --surface-1: #1f1f1d;
-    --surface-2: #262624;
-    --border:    #35352f;
-    --text-primary:   #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted:     #8f8e84;
-    --baseline: #3987e5;
-    --looped:   #d95926;
-    --grid: #2e2e29;
-    --accent: #3987e5;
+    --surface-0: #121211;
+    --surface-1: #1c1c1a;
+    --surface-2: #26261f;
+    --border: #33332c;
+    --border-strong: #45453c;
+    --text-primary:   #f5f5ef;
+    --text-secondary: #bdbcb1;
+    --text-muted:     #86857a;
+    --baseline: #4a93ea;
+    --looped:   #f07a45;
+    --baseline-soft: #14243a;
+    --looped-soft:   #3a2013;
+    --grid: #2b2b25;
+    --accent: #4a93ea;
+    --shadow: 0 1px 2px rgba(0,0,0,.2), 0 4px 20px rgba(0,0,0,.3);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --surface-0: #141413; --surface-1: #1f1f1d; --surface-2: #262624;
-      --border: #35352f; --text-primary: #ffffff; --text-secondary: #c3c2b7;
-      --text-muted: #8f8e84; --baseline: #3987e5; --looped: #d95926;
-      --grid: #2e2e29; --accent: #3987e5;
+      --surface-0:#121211;--surface-1:#1c1c1a;--surface-2:#26261f;--border:#33332c;
+      --border-strong:#45453c;--text-primary:#f5f5ef;--text-secondary:#bdbcb1;--text-muted:#86857a;
+      --baseline:#4a93ea;--looped:#f07a45;--baseline-soft:#14243a;--looped-soft:#3a2013;
+      --grid:#2b2b25;--accent:#4a93ea;--shadow:0 1px 2px rgba(0,0,0,.2),0 4px 20px rgba(0,0,0,.3);
     }
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
     margin: 0; background: var(--surface-0); color: var(--text-primary);
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.6; font-size: 16px;
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65; font-size: 16.5px; -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
-  header { padding: 56px 0 28px; border-bottom: 1px solid var(--border); }
-  h1 { font-size: 34px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.02em; }
-  h1 .sub { display:block; font-size: 17px; font-weight: 400; color: var(--text-secondary); margin-top: 10px; letter-spacing: 0; }
-  h2 { font-size: 22px; margin: 44px 0 14px; letter-spacing: -0.01em; }
-  h3 { font-size: 16px; margin: 24px 0 8px; color: var(--text-secondary); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px 96px; }
+  header { padding: 72px 0 34px; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+             color: var(--looped); margin: 0 0 14px; }
+  h1 { font-size: 42px; line-height: 1.08; margin: 0; letter-spacing: -0.03em; font-weight: 750; }
+  .lede { font-size: 19px; color: var(--text-secondary); margin: 18px 0 0; max-width: 40em; line-height:1.55;}
+  h2 { font-size: 25px; margin: 60px 0 6px; letter-spacing: -0.02em; font-weight: 700; scroll-margin-top: 20px; }
+  .h2-sub { color: var(--text-muted); font-size: 15px; margin: 0 0 20px; }
+  h3 { font-size: 15px; margin: 26px 0 8px; color: var(--text-secondary); font-weight:650; letter-spacing:.01em;}
   p { color: var(--text-primary); }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-size: 13.5px;
-         font-family: "SF Mono", Menlo, Consolas, monospace; }
-  pre { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
-        padding: 14px 16px; overflow-x: auto; font-size: 13px; }
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 5px; font-size: 13.5px;
+         font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; color: var(--text-primary); }
+  pre { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+        padding: 16px 18px; overflow-x: auto; font-size: 13px; box-shadow: var(--shadow); }
   pre code { background: none; padding: 0; }
-  .links { display:flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
-  .btn { display:inline-flex; align-items:center; gap:7px; background: var(--surface-1);
-         border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px;
-         font-size: 14px; font-weight: 500; color: var(--text-primary); }
-  .btn:hover { text-decoration: none; border-color: var(--accent); }
-  .toggle { position: fixed; top: 16px; right: 16px; background: var(--surface-1);
-            border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px;
-            font-size: 13px; cursor: pointer; color: var(--text-secondary); }
-  figure { margin: 20px 0; background: var(--surface-1); border: 1px solid var(--border);
-           border-radius: 12px; padding: 20px; }
-  figcaption { font-size: 13px; color: var(--text-muted); margin-top: 12px; }
-  .legend { display:flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 16px; font-size: 13.5px; }
-  .legend span { display:inline-flex; align-items:center; gap:7px; color: var(--text-secondary); }
-  .swatch { width: 12px; height: 12px; border-radius: 3px; display:inline-block; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 14px 0; }
-  th, td { border: 1px solid var(--border); padding: 7px 11px; text-align: right; }
+  .links { display:flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 0; }
+  .btn { display:inline-flex; align-items:center; gap:8px; background: var(--surface-1);
+         border: 1px solid var(--border-strong); border-radius: 9px; padding: 9px 15px;
+         font-size: 14px; font-weight: 550; color: var(--text-primary); box-shadow: var(--shadow); }
+  .btn:hover { text-decoration: none; border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { color:#fff; opacity:.92; }
+  .toggle { position: fixed; top: 18px; right: 18px; background: var(--surface-1);
+            border: 1px solid var(--border-strong); border-radius: 9px; padding: 8px 12px;
+            font-size: 13px; cursor: pointer; color: var(--text-secondary); box-shadow: var(--shadow); z-index: 10; }
+  .toggle:hover { color: var(--accent); }
+  figure { margin: 22px 0; background: var(--surface-1); border: 1px solid var(--border);
+           border-radius: 16px; padding: 26px; box-shadow: var(--shadow); }
+  figcaption { font-size: 13.5px; color: var(--text-muted); margin-top: 16px; line-height:1.55; }
+  .legend { display:flex; gap: 20px; flex-wrap: wrap; margin: 2px 0 4px; font-size: 13.5px; }
+  .legend span { display:inline-flex; align-items:center; gap:8px; color: var(--text-secondary); font-weight:500;}
+  .swatch { width: 13px; height: 13px; border-radius: 4px; display:inline-block; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 16px 0; }
+  th, td { border-bottom: 1px solid var(--border); padding: 10px 12px; text-align: right; }
   th:first-child, td:first-child { text-align: left; }
-  thead th { background: var(--surface-2); font-weight: 600; }
-  tbody tr:nth-child(even) td { background: var(--surface-1); }
-  .win { color: var(--looped); font-weight: 600; }
-  .note { color: var(--text-muted); font-size: 14px; }
-  .kpi-row { display:flex; flex-wrap:wrap; gap: 14px; margin: 20px 0; }
-  .kpi { flex: 1 1 150px; background: var(--surface-1); border: 1px solid var(--border);
-         border-radius: 12px; padding: 16px 18px; }
-  .kpi .val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
-  .kpi .lbl { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
-  .kpi .delta { font-size: 13px; color: var(--looped); font-weight: 600; margin-top: 6px; }
-  footer { margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--border);
+  thead th { border-bottom: 2px solid var(--border-strong); font-weight: 650; color: var(--text-secondary); font-size:13px; text-transform:uppercase; letter-spacing:.03em;}
+  tbody tr:hover td { background: var(--surface-2); }
+  .win { color: var(--looped); font-weight: 650; }
+  .note { color: var(--text-muted); font-size: 14.5px; }
+  .kpi-row { display:flex; flex-wrap:wrap; gap: 16px; margin: 26px 0; }
+  .kpi { flex: 1 1 160px; background: var(--surface-1); border: 1px solid var(--border);
+         border-radius: 14px; padding: 20px; box-shadow: var(--shadow); }
+  .kpi .val { font-size: 32px; font-weight: 750; letter-spacing: -0.03em; color: var(--looped); }
+  .kpi .lbl { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight:500;}
+  .kpi .delta { font-size: 12.5px; color: var(--text-muted); margin-top: 8px; font-variant-numeric: tabular-nums;}
+  .steps { counter-reset: s; margin: 20px 0; padding: 0; list-style: none; }
+  .steps li { counter-increment: s; position: relative; padding: 4px 0 16px 44px; }
+  .steps li::before { content: counter(s); position:absolute; left:0; top:2px; width:28px; height:28px;
+    background: var(--accent); color:#fff; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:14px; font-weight:650; }
+  .steps li b { color: var(--text-primary); }
+  footer { margin-top: 72px; padding-top: 26px; border-top: 1px solid var(--border);
            color: var(--text-muted); font-size: 13.5px; }
   text { font-family: inherit; }
+  .eq { background: var(--surface-2); border-radius:10px; padding:14px 18px; margin:16px 0; font-size:15px;
+        font-family:"SF Mono",ui-monospace,Menlo,monospace; overflow-x:auto; border:1px solid var(--border);}
+  .eq b.b { color: var(--baseline); } .eq b.o { color: var(--looped); }
 </style>
 </head>
 <body>
-<button class="toggle" onclick="(function(){var r=document.documentElement;var d=r.getAttribute('data-theme')==='dark';r.setAttribute('data-theme',d?'light':'dark');})()">◐ theme</button>
+<button class="toggle" onclick="(function(){var r=document.documentElement;var d=r.getAttribute('data-theme')==='dark';r.setAttribute('data-theme',d?'light':'dark');})()">◐&nbsp;theme</button>
 <div class="wrap">
 
 <header>
-  <h1>Looped nanochat
-    <span class="sub">A two-pass, shared-weight <b>routing-loop Transformer</b> built on nanochat — and a controlled study of whether "looping" a model improves quality at fixed scale. At d24 (~1.38B params), it wins or ties every eval.</span>
-  </h1>
+  <p class="eyebrow">Research · nanochat fork</p>
+  <h1>Looped&nbsp;nanochat</h1>
+  <p class="lede">A two-pass, shared-weight <b>routing-loop Transformer</b> — run the trunk twice, and let each second-pass layer read an attention prior from the first pass. A controlled study of whether "looping" a model helps at fixed scale. At d24 (~1.38 B params), it <b>wins or ties every eval</b>.</p>
   <div class="links">
-    <a class="btn" href="https://github.com/kyleliang919/looped_nanochat">⌥ GitHub repo</a>
-    <a class="btn" href="https://github.com/kyleliang919/looped_nanochat/blob/main/REPORT.md">▤ Full report</a>
+    <a class="btn primary" href="https://github.com/kyleliang919/looped_nanochat">GitHub&nbsp;repo →</a>
+    <a class="btn" href="https://github.com/kyleliang919/looped_nanochat/blob/main/REPORT.md">Full report</a>
     <a class="btn" href="https://huggingface.co/kz919/looped-nanochat-d24">🤗 looped-d24</a>
     <a class="btn" href="https://huggingface.co/kz919/baseline-nanochat-d24">🤗 baseline-d24</a>
   </div>
 </header>
 
 <h2>The headline</h2>
+<p class="h2-sub">Both models trained under an identical data / token / schedule budget at d24 on 4×H100. The only difference is the routing loop.</p>
 <div class="kpi-row">
   <div class="kpi"><div class="val">+9.0%</div><div class="lbl">Base CORE (pretraining)</div><div class="delta">0.2552 → 0.2783</div></div>
   <div class="kpi"><div class="val">+11.9%</div><div class="lbl">ChatCORE (post-SFT)</div><div class="delta">0.2253 → 0.2521</div></div>
-  <div class="kpi"><div class="val">+45%</div><div class="lbl">GSM8K (relative)</div><div class="delta">2.88% → 4.17%</div></div>
+  <div class="kpi"><div class="val">+45%</div><div class="lbl">GSM8K, relative</div><div class="delta">2.88% → 4.17%</div></div>
 </div>
-<p class="note">Both models trained under an <b>identical</b> data / token budget / schedule at d24 on a 4×H100 node. The only difference is the routing loop. The gain costs ~2.4× training compute (running the trunk twice).</p>
 
-<h2>How the loop works</h2>
-<p>Standard nanochat is a single-pass causal Transformer. The looped variant runs the trunk <b>twice</b>: pass&nbsp;1 runs normally and captures its Q/K features at selected layers; pass&nbsp;2 re-runs from the embeddings, and each of its layers adds a causal attention-logit prior from a chosen pass-1 layer.</p>
+<h2>How the routing loop works</h2>
+<p class="h2-sub">Standard nanochat is a single-pass causal Transformer. The looped variant runs the same weights twice per forward.</p>
+<ol class="steps">
+  <li><b>Pass 1 — raw.</b> Run the ordinary causal Transformer. At three <em>source</em> layers, keep the normalized, RoPE-applied query/key features <code>(q₁, k₁)</code>.</li>
+  <li><b>Pass 2 — routed.</b> Re-run the trunk from the token embeddings. Every layer adds a causal attention-logit prior built from its assigned source layer's <code>(q₁, k₁)</code>, scaled by a learned per-layer gate.</li>
+</ol>
 
 <figure>
-<svg viewBox="0 0 820 380" width="100%" role="img" aria-label="Two-pass routing loop architecture diagram">
-  <defs>
-    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--text-muted)"/></marker>
-    <marker id="ahr" markerWidth="10" markerHeight="10" refX="7" refY="3.2" orient="auto"><path d="M0,0 L7,3.2 L0,6.4 Z" fill="var(--looped)"/></marker>
-  </defs>
-  <!-- tokens -->
-  <rect x="30" y="168" width="70" height="44" rx="8" fill="var(--surface-2)" stroke="var(--border)"/>
-  <text x="65" y="188" text-anchor="middle" font-size="12" fill="var(--text-secondary)">token</text>
-  <text x="65" y="203" text-anchor="middle" font-size="12" fill="var(--text-secondary)">embed</text>
-
-  <!-- PASS 1 -->
-  <text x="300" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="var(--baseline)">PASS 1 — raw (captures Q/K)</text>
-  <g>
-    <rect x="150" y="58" width="300" height="120" rx="10" fill="none" stroke="var(--baseline)" stroke-dasharray="4 4" opacity="0.6"/>
-    <rect x="170" y="88" width="56" height="60" rx="7" fill="var(--surface-1)" stroke="var(--baseline)"/>
-    <rect x="242" y="88" width="56" height="60" rx="7" fill="var(--surface-1)" stroke="var(--baseline)"/>
-    <rect x="314" y="88" width="56" height="60" rx="7" fill="var(--surface-1)" stroke="var(--baseline)"/>
-    <rect x="386" y="88" width="46" height="60" rx="7" fill="var(--surface-1)" stroke="var(--baseline)"/>
-    <text x="198" y="123" text-anchor="middle" font-size="11" fill="var(--text-secondary)">L1</text>
-    <text x="270" y="123" text-anchor="middle" font-size="11" fill="var(--text-secondary)">L2</text>
-    <text x="342" y="115" text-anchor="middle" font-size="10.5" fill="var(--baseline)">Lₖ</text>
-    <text x="342" y="130" text-anchor="middle" font-size="9" fill="var(--text-muted)">q₁,k₁</text>
-    <text x="409" y="123" text-anchor="middle" font-size="11" fill="var(--text-secondary)">…</text>
-  </g>
-
-  <!-- PASS 2 -->
-  <text x="300" y="222" text-anchor="middle" font-size="14" font-weight="700" fill="var(--looped)">PASS 2 — routed</text>
-  <g>
-    <rect x="150" y="238" width="300" height="120" rx="10" fill="none" stroke="var(--looped)" stroke-dasharray="4 4" opacity="0.6"/>
-    <rect x="170" y="268" width="56" height="60" rx="7" fill="var(--surface-1)" stroke="var(--looped)"/>
-    <rect x="242" y="268" width="56" height="60" rx="7" fill="var(--surface-1)" stroke="var(--looped)"/>
-    <rect x="314" y="268" width="56" height="60" rx="7" fill="var(--surface-1)" stroke="var(--looped)"/>
-    <rect x="386" y="268" width="46" height="60" rx="7" fill="var(--surface-1)" stroke="var(--looped)"/>
-    <text x="198" y="303" text-anchor="middle" font-size="11" fill="var(--text-secondary)">L1</text>
-    <text x="270" y="303" text-anchor="middle" font-size="11" fill="var(--text-secondary)">L2</text>
-    <text x="342" y="303" text-anchor="middle" font-size="10.5" fill="var(--looped)">Lₖ</text>
-    <text x="409" y="303" text-anchor="middle" font-size="11" fill="var(--text-secondary)">…</text>
-  </g>
-
-  <!-- token feeds both passes -->
-  <path d="M100,183 C120,183 130,128 168,118" fill="none" stroke="var(--text-muted)" stroke-width="1.6" marker-end="url(#ah)"/>
-  <path d="M100,197 C120,197 130,298 168,298" fill="none" stroke="var(--text-muted)" stroke-width="1.6" marker-end="url(#ah)"/>
-
-  <!-- routing arrow: pass1 Lk Q/K -> pass2 Lk -->
-  <path d="M342,150 C342,190 342,210 342,266" fill="none" stroke="var(--looped)" stroke-width="2.4" marker-end="url(#ahr)"/>
-  <text x="352" y="212" font-size="10.5" fill="var(--looped)">+ g·q₁·k₁ᵀ</text>
-
-  <!-- output -->
-  <rect x="470" y="268" width="70" height="60" rx="8" fill="var(--surface-2)" stroke="var(--border)"/>
-  <text x="505" y="294" text-anchor="middle" font-size="11" fill="var(--text-secondary)">logits</text>
-  <text x="505" y="309" text-anchor="middle" font-size="11" fill="var(--text-secondary)">(loss)</text>
-  <path d="M432,298 L468,298" fill="none" stroke="var(--text-muted)" stroke-width="1.6" marker-end="url(#ah)"/>
-
-  <!-- formula card -->
-  <rect x="560" y="120" width="240" height="150" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
-  <text x="580" y="148" font-size="12.5" font-weight="700" fill="var(--text-primary)">Pass-2 attention</text>
-  <text x="580" y="176" font-size="12" fill="var(--text-secondary)">logits =</text>
-  <text x="596" y="198" font-size="12.5" fill="var(--baseline)">q₂·k₂ᵀ / √D</text>
-  <text x="596" y="220" font-size="12.5" fill="var(--looped)">+ g · q₁·k₁ᵀ / √D</text>
-  <text x="580" y="248" font-size="10.5" fill="var(--text-muted)">g = softplus(gate), per layer,</text>
-  <text x="580" y="262" font-size="10.5" fill="var(--text-muted)">learned. No N×N matrix formed.</text>
-</svg>
-<figcaption>The two-pass routing loop. Pass 1 (blue) runs the ordinary Transformer and retains Q/K at selected source layers; pass 2 (orange) re-runs and each layer adds a causal attention-logit prior <code>g·q₁·k₁ᵀ</code> from its source layer. Implemented via augmented-width Q/K through a fused FlexAttention kernel — no attention matrix is materialized. Only <code>routing_gate_logits</code> (per layer) and a 2×<code>n_embd</code> <code>pass_embeddings</code> are added over baseline.</figcaption>
+<svg id="archsvg" viewBox="0 0 860 430" width="100%" role="img" aria-label="Two-pass routing loop: pass 1 captures Q/K at source layers, pass 2 layers each add a routing prior from their source layer"></svg>
+<figcaption><b>Data flow.</b> Both passes share weights and read the same token embeddings. Pass 1 (blue) caches <code>(q₁,k₁)</code> at three source layers — for d24/<code>progressive</code> these are <b>L12, L17, L23</b>. Each pass-2 layer (orange) is wired to one source: layers 0–7 ← L12, 8–15 ← L17, 16–23 ← L23. The final pass-2 hidden state produces the logits and the training loss.</figcaption>
 </figure>
 
-<h2>Results — full test sets, matched training</h2>
+<h3>How the bias enters one attention layer</h3>
+<p>Inside a pass-2 layer, the desired attention logits are its own scores <b>plus</b> a gated copy of the source layer's scores:</p>
+<div class="eq"><b class="o">attn_logits</b> &nbsp;=&nbsp; q₂·k₂ᵀ / √D &nbsp;&nbsp;+&nbsp;&nbsp; g · ( q₁·k₁ᵀ / √D )&nbsp;&nbsp;&nbsp;<span style="color:var(--text-muted)">g = softplus(gate_logit), one scalar per layer</span></div>
+<p>Rather than form either N×N score matrix, the layer <b>concatenates along the head dimension</b> and runs one ordinary attention at width <code>2D</code> — the dot product reproduces the sum exactly, and the gate is folded into the routing keys:</p>
+<figure>
+<svg id="injsvg" viewBox="0 0 860 340" width="100%" role="img" aria-label="Inside a pass-2 attention layer: q2/k2 concatenated with routing q1 and gated k1, one attention at width 2D"></svg>
+<figcaption><b>Injection, per pass-2 layer.</b> The layer's own <code>q₂,k₂</code> (this pass) are concatenated with the source layer's cached <code>q₁, k₁</code> (gate folded into the key: <code>g·k₁</code>). One causal attention at head-width <code>2D</code>, softmax-scaled by <code>1/√D</code>, is <em>exactly</em> <code>softmax(q₂k₂ᵀ + g·q₁k₁ᵀ)·v₂</code> — no attention matrix is materialized. V stays width <code>D</code> (pass-2 only). Training runs this through a fused, compiled FlexAttention kernel. Only two params are added over baseline: the per-layer <code>routing_gate_logits</code> and a 2×<code>n_embd</code> <code>pass_embeddings</code>.</figcaption>
+</figure>
+
+<h2>Results</h2>
+<p class="h2-sub">Post-SFT accuracy on the full test sets — not a subsample.</p>
 <div class="legend">
-  <span><span class="swatch" style="background:var(--baseline)"></span>Baseline (single-pass nanochat)</span>
-  <span><span class="swatch" style="background:var(--looped)"></span>Looped (routing loop)</span>
+  <span><span class="swatch" style="background:var(--baseline)"></span>Baseline · single-pass nanochat</span>
+  <span><span class="swatch" style="background:var(--looped)"></span>Looped · routing loop</span>
 </div>
 <figure>
-<svg id="barchart" viewBox="0 0 820 340" width="100%" role="img" aria-label="Baseline vs looped accuracy by task"></svg>
-<figcaption>Post-SFT accuracy on the full test sets. Looped wins on ARC-Easy, ARC-Challenge, MMLU, and GSM8K; HumanEval ties. Bars are direct-labeled so identity never relies on color alone.</figcaption>
+<svg id="barchart" viewBox="0 0 860 350" width="100%" role="img" aria-label="Baseline vs looped accuracy by task"></svg>
+<figcaption>Looped wins on ARC-Easy, ARC-Challenge, MMLU and GSM8K; HumanEval ties. Bars are direct-labeled, so identity never relies on color alone.</figcaption>
 </figure>
 
 <table>
@@ -209,12 +186,14 @@
     <tr><td>HumanEval</td><td>10.98%</td><td>10.98%</td><td>±0.00 pp</td></tr>
   </tbody>
 </table>
+<p class="note">The gain costs ~2.4× training compute (running the trunk twice, partly offset by a fused FlexAttention routing kernel — see the report).</p>
 
-<h2>Test-time pass scaling — a clean negative</h2>
-<p>Since the architecture is a loop, can running <b>more than 2 passes at inference</b> (no retraining) buy extra quality? We generalized the forward to <code>K</code> iterations and measured validation bits-per-byte over 21M tokens:</p>
+<h2>Test-time pass scaling</h2>
+<p class="h2-sub">A clean negative result.</p>
+<p>Since the architecture is a loop, can running <b>more than 2 passes at inference</b> (no retraining) buy extra quality? We generalized the forward to <code>K</code> iterations and measured validation bits-per-byte over 21 M tokens:</p>
 <figure>
-<svg id="linechart" viewBox="0 0 820 320" width="100%" role="img" aria-label="Validation bpb vs number of inference passes"></svg>
-<figcaption>Validation bpb (lower is better) vs. number of inference passes K. <b>K=2 — exactly the trained config — is optimal;</b> every extra pass monotonically degrades quality back toward the untrained single-pass level. The model was never trained to consume its routing prior recursively, so it drifts. Real test-time scaling would require <em>training</em> with a variable K.</figcaption>
+<svg id="linechart" viewBox="0 0 860 330" width="100%" role="img" aria-label="Validation bpb vs number of inference passes"></svg>
+<figcaption><b>K=2 — exactly the trained config — is optimal.</b> Every extra pass monotonically degrades quality back toward the untrained single-pass level: the model was never trained to consume its routing prior recursively, so it drifts. Real test-time scaling would require <em>training</em> with a variable K.</figcaption>
 </figure>
 
 <h2>Reproduce</h2>
@@ -224,75 +203,158 @@ bash runs/run_looped.sh          # routing loop on, tag: looped-d24
 # full generative eval (either tag)
 torchrun --standalone --nproc_per_node=4 -m scripts.chat_eval -- \
     -i sft -g looped-d24 -a "GSM8K|HumanEval"</code></pre>
-<p class="note">Looped flags for <code>scripts.base_train</code>: <code>--routing-loop --routing-pattern=progressive --routing-gate-init=0.05</code>. Full methodology, cost/speed analysis, and engineering notes (FlexAttention routing kernel, distributed-optimizer fix, batched eval) are in the <a href="https://github.com/kyleliang919/looped_nanochat/blob/main/REPORT.md">report</a>.</p>
+<p class="note">Looped flags for <code>scripts.base_train</code>: <code>--routing-loop --routing-pattern=progressive --routing-gate-init=0.05</code>. The routing config is stored in each checkpoint, so SFT / eval / inference rebuild the two-pass model automatically.</p>
 
 <footer>
-  Built on <a href="https://github.com/karpathy/nanochat">karpathy/nanochat</a> @ <code>92d63d4</code>. MIT license.
-  Models: <a href="https://huggingface.co/kz919/looped-nanochat-d24">looped-d24</a> ·
-  <a href="https://huggingface.co/kz919/baseline-nanochat-d24">baseline-d24</a>.
+  Built on <a href="https://github.com/karpathy/nanochat">karpathy/nanochat</a> @ <code>92d63d4</code> · MIT license · models on <a href="https://huggingface.co/kz919/looped-nanochat-d24">Hugging&nbsp;Face</a>.
 </footer>
 
 </div>
 
 <script>
+const NS='http://www.w3.org/2000/svg';
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-function draw() {
-  drawBars(); drawLine();
+function el(svg,t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;svg.appendChild(e);return e;}
+function rrect(svg,x,y,w,h,r,fill,stroke,sw){return el(svg,'rect',{x,y,width:w,height:h,rx:r,fill,stroke:stroke||'none','stroke-width':sw||1});}
+
+function drawArch(){
+  const s=document.getElementById('archsvg'); s.innerHTML='';
+  const B=cssv('--baseline'),O=cssv('--looped'),TX=cssv('--text-primary'),
+        TS=cssv('--text-secondary'),TM=cssv('--text-muted'),S1=cssv('--surface-1'),
+        S2=cssv('--surface-2'),BS=cssv('--baseline-soft'),OS=cssv('--looped-soft'),BD=cssv('--border-strong');
+  // defs
+  const defs=el(s,'defs',{});
+  const mk=(id,c)=>{const m=document.createElementNS(NS,'marker');m.setAttribute('id',id);m.setAttribute('markerWidth','8');m.setAttribute('markerHeight','8');m.setAttribute('refX','6');m.setAttribute('refY','3');m.setAttribute('orient','auto');const p=document.createElementNS(NS,'path');p.setAttribute('d','M0,0 L6,3 L0,6 Z');p.setAttribute('fill',c);m.appendChild(p);defs.appendChild(m);};
+  mk('aB',B);mk('aO',O);mk('aM',TM);
+  // token embed
+  rrect(s,24,196,74,52,10,S2,BD,1);
+  el(s,'text',{x:61,y:218,'text-anchor':'middle','font-size':12.5,fill:TS,'font-weight':600},'token');
+  el(s,'text',{x:61,y:234,'text-anchor':'middle','font-size':12.5,fill:TS,'font-weight':600},'embed');
+  // layer strip helper
+  const nCol=6, x0=150, lw=44, gap=8, rowH=54;
+  const labels=['L0','L1','…','L12*','…','L23*'];
+  function strip(y,color,soft,title,titleColor,srcMark){
+    rrect(s,x0-14,y-30,nCol*(lw+gap)+18,rowH+52,14,'none',color,1.4).setAttribute('opacity','.35');
+    el(s,'text',{x:x0-14+8,y:y-14,'font-size':13,'font-weight':700,fill:titleColor},title);
+    for(let i=0;i<nCol;i++){
+      const lx=x0+i*(lw+gap);
+      const isSrc=srcMark&&(labels[i].includes('*'));
+      rrect(s,lx,y,lw,rowH,8,isSrc?soft:S1,color,isSrc?1.8:1.1);
+      el(s,'text',{x:lx+lw/2,y:y+rowH/2+4,'text-anchor':'middle','font-size':11,fill:isSrc?color:TS,'font-weight':isSrc?700:500},labels[i]);
+    }
+  }
+  strip(70, B, BS, 'PASS 1 — raw · caches (q₁,k₁) at source layers ★', B, true);
+  strip(300, O, OS, 'PASS 2 — routed · each layer adds g·q₁k₁ᵀ', O, false);
+  // token -> both passes
+  el(s,'path',{d:`M98,214 C120,214 120,100 ${x0-2},100`,fill:'none',stroke:TM,'stroke-width':1.6,'marker-end':'url(#aM)'});
+  el(s,'path',{d:`M98,230 C120,230 120,330 ${x0-2},330`,fill:'none',stroke:TM,'stroke-width':1.6,'marker-end':'url(#aM)'});
+  // routing arrows from source cols (idx 3 and 5) down into pass 2
+  const srcCols=[3,5];
+  srcCols.forEach(ci=>{
+    const cx=x0+ci*(lw+gap)+lw/2;
+    el(s,'path',{d:`M${cx},124 C${cx},200 ${cx},220 ${cx},298`,fill:'none',stroke:O,'stroke-width':2.4,'stroke-dasharray':'1 0','marker-end':'url(#aO)'});
+  });
+  el(s,'text',{x:x0+3*(lw+gap)+lw/2+8,y:212,'font-size':11,fill:O,'font-weight':600},'q₁,k₁');
+  // pass2 -> logits
+  const px=x0+nCol*(lw+gap)+2;
+  rrect(s,px+18,300,74,54,10,S2,BD,1);
+  el(s,'text',{x:px+18+37,y:322,'text-anchor':'middle','font-size':12,fill:TS,'font-weight':600},'logits');
+  el(s,'text',{x:px+18+37,y:338,'text-anchor':'middle','font-size':11,fill:TM},'→ loss');
+  el(s,'path',{d:`M${px},327 L${px+16},327`,fill:'none',stroke:TM,'stroke-width':1.6,'marker-end':'url(#aM)'});
+  // wiring note
+  el(s,'text',{x:x0,y:404,'font-size':11.5,fill:TM},'progressive wiring (d24):  L0–7 ← L12   ·   L8–15 ← L17   ·   L16–23 ← L23');
 }
-function drawBars() {
-  const svg = document.getElementById('barchart'); svg.innerHTML='';
-  const W=820,H=340, mL=48,mR=16,mT=16,mB=54, pw=W-mL-mR, ph=H-mT-mB;
-  const data=[
-    {t:'ARC-Easy',b:62.04,l:68.01},{t:'ARC-Chal',b:50.00,l:52.22},
-    {t:'MMLU',b:37.06,l:37.96},{t:'GSM8K',b:2.88,l:4.17},{t:'HumanEval',b:10.98,l:10.98}
-  ];
+
+function drawInj(){
+  const s=document.getElementById('injsvg'); s.innerHTML='';
+  const B=cssv('--baseline'),O=cssv('--looped'),TX=cssv('--text-primary'),TS=cssv('--text-secondary'),
+        TM=cssv('--text-muted'),S1=cssv('--surface-1'),S2=cssv('--surface-2'),BS=cssv('--baseline-soft'),
+        OS=cssv('--looped-soft'),BD=cssv('--border-strong');
+  const defs=el(s,'defs',{});
+  const mk=(id,c)=>{const m=document.createElementNS(NS,'marker');m.setAttribute('id',id);m.setAttribute('markerWidth','8');m.setAttribute('markerHeight','8');m.setAttribute('refX','6');m.setAttribute('refY','3');m.setAttribute('orient','auto');const p=document.createElementNS(NS,'path');p.setAttribute('d','M0,0 L6,3 L0,6 Z');p.setAttribute('fill',c);m.appendChild(p);defs.appendChild(m);};
+  mk('iB',B);mk('iO',O);mk('iM',TM);
+  // inputs: this-layer x2  (top)  and source cached (bottom)
+  el(s,'text',{x:20,y:44,'font-size':12.5,fill:B,'font-weight':700},'this pass-2 layer');
+  rrect(s,20,54,70,38,8,BS,B,1.3); el(s,'text',{x:55,y:78,'text-anchor':'middle','font-size':13,fill:B,'font-weight':600},'q₂');
+  rrect(s,20,100,70,38,8,BS,B,1.3); el(s,'text',{x:55,y:124,'text-anchor':'middle','font-size':13,fill:B,'font-weight':600},'k₂');
+  rrect(s,20,146,70,38,8,S2,BD,1); el(s,'text',{x:55,y:170,'text-anchor':'middle','font-size':13,fill:TS,'font-weight':600},'v₂');
+  el(s,'text',{x:20,y:236,'font-size':12.5,fill:O,'font-weight':700},'source layer (pass 1, cached)');
+  rrect(s,20,246,70,38,8,OS,O,1.3); el(s,'text',{x:55,y:270,'text-anchor':'middle','font-size':13,fill:O,'font-weight':600},'q₁');
+  rrect(s,20,292,70,38,8,OS,O,1.3); el(s,'text',{x:55,y:316,'text-anchor':'middle','font-size':13,fill:O,'font-weight':600},'k₁');
+
+  // gate on k1
+  rrect(s,150,292,70,38,8,S1,O,1.3); el(s,'text',{x:185,y:316,'text-anchor':'middle','font-size':12.5,fill:O,'font-weight':600},'g·k₁');
+  el(s,'path',{d:'M90,311 L148,311',fill:'none',stroke:O,'stroke-width':1.8,'marker-end':'url(#iO)'});
+  el(s,'text',{x:119,y:304,'text-anchor':'middle','font-size':10.5,fill:TM},'×g');
+
+  // concat q_aug and k_aug
+  rrect(s,300,66,116,40,9,S1,B,1.5);
+  el(s,'text',{x:358,y:84,'text-anchor':'middle','font-size':12.5,fill:TX,'font-weight':600},'q_aug = [q₂ , q₁]');
+  el(s,'text',{x:358,y:99,'text-anchor':'middle','font-size':10,fill:TM},'width 2D');
+  rrect(s,300,150,116,40,9,S1,O,1.5);
+  el(s,'text',{x:358,y:168,'text-anchor':'middle','font-size':12.5,fill:TX,'font-weight':600},'k_aug = [k₂ , g·k₁]');
+  el(s,'text',{x:358,y:183,'text-anchor':'middle','font-size':10,fill:TM},'width 2D');
+  // arrows into concat
+  el(s,'path',{d:'M90,73 C220,73 210,84 298,84',fill:'none',stroke:B,'stroke-width':1.7,'marker-end':'url(#iB)'});
+  el(s,'path',{d:'M90,119 C210,119 210,92 298,90',fill:'none',stroke:B,'stroke-width':1.7,'marker-end':'url(#iB)'});
+  el(s,'path',{d:'M90,265 C240,265 250,168 298,166',fill:'none',stroke:O,'stroke-width':1.7,'marker-end':'url(#iO)'});
+  el(s,'path',{d:'M220,311 C260,311 270,182 298,176',fill:'none',stroke:O,'stroke-width':1.7,'marker-end':'url(#iO)'});
+
+  // attention op
+  rrect(s,470,96,150,110,12,S2,BD,1.4);
+  el(s,'text',{x:545,y:124,'text-anchor':'middle','font-size':13,fill:TX,'font-weight':700},'attention (2D)');
+  el(s,'text',{x:545,y:148,'text-anchor':'middle','font-size':11.5,fill:TS},'softmax( q_aug·k_augᵀ');
+  el(s,'text',{x:545,y:165,'text-anchor':'middle','font-size':11.5,fill:TS},'/ √D ) · v₂');
+  el(s,'text',{x:545,y:190,'text-anchor':'middle','font-size':10,fill:TM},'fused FlexAttention · causal');
+  el(s,'path',{d:'M416,86 C445,86 448,120 468,124',fill:'none',stroke:B,'stroke-width':1.7,'marker-end':'url(#iB)'});
+  el(s,'path',{d:'M416,170 C445,170 448,150 468,150',fill:'none',stroke:O,'stroke-width':1.7,'marker-end':'url(#iO)'});
+  el(s,'path',{d:'M90,178 C260,178 360,196 468,190',fill:'none',stroke:TM,'stroke-width':1.6,'marker-end':'url(#iM)'});
+  el(s,'text',{x:250,y:214,'text-anchor':'middle','font-size':10.5,fill:TM},'v₂ (width D, pass-2 values)');
+
+  // output = identity
+  rrect(s,670,120,170,64,11,S1,BD,1.2);
+  el(s,'text',{x:755,y:146,'text-anchor':'middle','font-size':11.5,fill:TX,'font-weight':600},'= softmax(q₂k₂ᵀ');
+  el(s,'text',{x:755,y:163,'text-anchor':'middle','font-size':11.5,fill:TX,'font-weight':600},'+ g·q₁k₁ᵀ)·v₂');
+  el(s,'text',{x:755,y:178,'text-anchor':'middle','font-size':10,fill:TM},'exact — no N×N matrix');
+  el(s,'path',{d:'M620,151 L668,151',fill:'none',stroke:TM,'stroke-width':1.6,'marker-end':'url(#iM)'});
+}
+
+function drawBars(){
+  const svg=document.getElementById('barchart'); svg.innerHTML='';
+  const W=860,H=350, mL=52,mR=18,mT=18,mB=52, pw=W-mL-mR, ph=H-mT-mB;
+  const B=cssv('--baseline'),O=cssv('--looped'),TS=cssv('--text-secondary'),TM=cssv('--text-muted'),TX=cssv('--text-primary'),GR=cssv('--grid');
+  const data=[{t:'ARC-Easy',b:62.04,l:68.01},{t:'ARC-Challenge',b:50.00,l:52.22},{t:'MMLU',b:37.06,l:37.96},{t:'GSM8K',b:2.88,l:4.17},{t:'HumanEval',b:10.98,l:10.98}];
   const max=75, y=v=>mT+ph-(v/max)*ph;
-  const NS='http://www.w3.org/2000/svg';
-  const add=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;};
-  // gridlines
-  for(let g=0;g<=75;g+=25){const yy=y(g);add('line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:cssv('--grid'),'stroke-width':1});
-    const tx=add('text',{x:mL-8,y:yy+4,'text-anchor':'end','font-size':11,fill:cssv('--text-muted')});tx.textContent=g+'%';}
-  const gw=pw/data.length, bw=Math.min(46,gw/3);
+  for(let g=0;g<=75;g+=25){const yy=y(g);el(svg,'line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:GR,'stroke-width':1});el(svg,'text',{x:mL-10,y:yy+4,'text-anchor':'end','font-size':11.5,fill:TM},g+'%');}
+  const gw=pw/data.length, bw=Math.min(50,gw/3.4);
   data.forEach((d,i)=>{
     const cx=mL+gw*i+gw/2;
-    const drawBar=(v,off,color)=>{
-      const bx=cx+off, by=y(v), bh=mT+ph-by;
-      add('rect',{x:bx-bw/2,y:by,width:bw,height:bh,rx:4,fill:color});
-      const lb=add('text',{x:bx,y:by-6,'text-anchor':'middle','font-size':11,'font-weight':600,fill:cssv('--text-secondary')});
-      lb.textContent=v.toFixed(1);
-    };
-    drawBar(d.b,-bw/2-2,cssv('--baseline'));
-    drawBar(d.l, bw/2+2,cssv('--looped'));
-    const tl=add('text',{x:cx,y:H-mB+22,'text-anchor':'middle','font-size':12,fill:cssv('--text-primary')});tl.textContent=d.t;
+    [[d.b,-bw/2-3,B],[d.l,bw/2+3,O]].forEach(([v,off,c])=>{
+      const bx=cx+off,by=y(v),bh=mT+ph-by;
+      el(svg,'rect',{x:bx-bw/2,y:by,width:bw,height:bh,rx:5,fill:c});
+      el(svg,'text',{x:bx,y:by-7,'text-anchor':'middle','font-size':11.5,'font-weight':650,fill:TS},v.toFixed(1));
+    });
+    el(svg,'text',{x:cx,y:H-mB+24,'text-anchor':'middle','font-size':12.5,fill:TX,'font-weight':500},d.t);
   });
 }
-function drawLine() {
+
+function drawLine(){
   const svg=document.getElementById('linechart'); svg.innerHTML='';
-  const W=820,H=320, mL=64,mR=110,mT=18,mB=46, pw=W-mL-mR, ph=H-mT-mB;
+  const W=860,H=330, mL=70,mR=118,mT=22,mB=46, pw=W-mL-mR, ph=H-mT-mB;
+  const O=cssv('--looped'),S1=cssv('--surface-1'),TS=cssv('--text-secondary'),TM=cssv('--text-muted'),TX=cssv('--text-primary'),GR=cssv('--grid');
   const data=[[1,0.72608],[2,0.71092],[3,0.72007],[4,0.72214],[5,0.72386],[6,0.72451],[8,0.72497]];
-  const xmin=1,xmax=8, ymin=0.708,ymax=0.728;
+  const xmin=1,xmax=8,ymin=0.708,ymax=0.728;
   const x=k=>mL+((k-xmin)/(xmax-xmin))*pw, y=v=>mT+ph-((v-ymin)/(ymax-ymin))*ph;
-  const NS='http://www.w3.org/2000/svg';
-  const add=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;};
-  for(let g=0.710;g<=0.726;g+=0.004){const yy=y(g);add('line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:cssv('--grid'),'stroke-width':1});
-    const tx=add('text',{x:mL-8,y:yy+4,'text-anchor':'end','font-size':11,fill:cssv('--text-muted')});tx.textContent=g.toFixed(3);}
-  [1,2,3,4,5,6,8].forEach(k=>{const t=add('text',{x:x(k),y:H-mB+22,'text-anchor':'middle','font-size':12,fill:cssv('--text-primary')});t.textContent='K='+k;});
-  // line
-  let dstr=data.map((d,i)=>(i?'L':'M')+x(d[0])+','+y(d[1])).join(' ');
-  add('path',{d:dstr,fill:'none',stroke:cssv('--looped'),'stroke-width':2});
-  // markers + best highlight
-  data.forEach(d=>{
-    const best=d[0]===2;
-    add('circle',{cx:x(d[0]),cy:y(d[1]),r:best?6:4.5,fill:best?cssv('--looped'):cssv('--surface-1'),stroke:cssv('--looped'),'stroke-width':2});
-  });
-  // annotate K=2 best
-  const bx=x(2),by=y(0.71092);
-  const a=add('text',{x:bx+2,y:by-14,'text-anchor':'middle','font-size':11.5,'font-weight':700,fill:cssv('--looped')});a.textContent='best (trained K)';
-  // trained-region note at right
-  const n=add('text',{x:W-mR+10,y:y(0.72497)+4,'font-size':11,fill:cssv('--text-muted')});n.textContent='drifts →';
-  // y axis label
-  const yl=add('text',{x:16,y:mT+ph/2,'font-size':11.5,fill:cssv('--text-secondary'),transform:`rotate(-90 16 ${mT+ph/2})`,'text-anchor':'middle'});yl.textContent='val bpb (lower better)';
+  for(let g=0.710;g<=0.726;g+=0.004){const yy=y(g);el(svg,'line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:GR,'stroke-width':1});el(svg,'text',{x:mL-10,y:yy+4,'text-anchor':'end','font-size':11.5,fill:TM},g.toFixed(3));}
+  [1,2,3,4,5,6,8].forEach(k=>el(svg,'text',{x:x(k),y:H-mB+24,'text-anchor':'middle','font-size':12.5,fill:TX},'K='+k));
+  el(svg,'path',{d:data.map((d,i)=>(i?'L':'M')+x(d[0])+','+y(d[1])).join(' '),fill:'none',stroke:O,'stroke-width':2.4});
+  data.forEach(d=>{const best=d[0]===2;el(svg,'circle',{cx:x(d[0]),cy:y(d[1]),r:best?6.5:4.5,fill:best?O:S1,stroke:O,'stroke-width':2.2});});
+  el(svg,'text',{x:x(2),y:y(0.71092)-15,'text-anchor':'middle','font-size':12,'font-weight':700,fill:O},'best (trained K=2)');
+  el(svg,'text',{x:W-mR+12,y:y(0.72497)+4,'font-size':11.5,fill:TM},'drifts →');
+  el(svg,'text',{x:20,y:mT+ph/2,'font-size':12,fill:TS,transform:`rotate(-90 20 ${mT+ph/2})`,'text-anchor':'middle'},'val bpb  (lower better)');
 }
+
+function draw(){drawArch();drawInj();drawBars();drawLine();}
 draw();
 new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
