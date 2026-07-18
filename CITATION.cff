@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use looped nanochat, please cite it as below."
+title: "Looped nanochat: A Two-Pass Routing-Loop Transformer"
+authors:
+  - family-names: Liang
+    given-names: Kaizhao
+year: 2026
+url: "https://github.com/kyleliang919/looped_nanochat"
+repository-code: "https://github.com/kyleliang919/looped_nanochat"
+license: MIT
+abstract: >-
+  A two-pass, shared-weight routing-loop Transformer built on karpathy/nanochat.
+  The trunk is run twice per forward: pass 1 runs the ordinary causal Transformer
+  and caches Q/K at selected source layers, and each pass-2 layer adds a causal
+  attention-logit prior from its source layer via augmented-width attention. At
+  the d24 (~1.38B parameter) scale, under a matched training budget, the looped
+  model wins or ties every evaluation (base CORE, ChatCORE, ARC, MMLU, GSM8K,
+  HumanEval).
+keywords:
+  - transformer
+  - looped-transformer
+  - routing-loop
+  - nanochat
+  - language-model
+references:
+  - type: software
+    title: nanochat
+    authors:
+      - family-names: Karpathy
+        given-names: Andrej
+    url: "https://github.com/karpathy/nanochat"

@@ -84,6 +84,22 @@ Open directions, roughly ordered by how promising they seem given what we found:
   (`--first-pass-loss-weight`), `--routing-detach` (stop-grad through pass-1), and
   the `backout`/`smear` interactions, to attribute the improvement.
 
+## Citation
+
+If you use looped nanochat, please cite it:
+
+```bibtex
+@misc{liang2026loopednanochat,
+  title        = {Looped nanochat: A Two-Pass Routing-Loop Transformer},
+  author       = {Liang, Kaizhao},
+  year         = {2026},
+  howpublished = {\url{https://github.com/kyleliang919/looped_nanochat}},
+  note         = {Built on karpathy/nanochat}
+}
+```
+
+Please also cite the upstream [nanochat](https://github.com/karpathy/nanochat).
+
 ---
 
 # nanochat (upstream)

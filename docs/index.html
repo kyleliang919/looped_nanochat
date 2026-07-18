@@ -228,6 +228,17 @@ torchrun --standalone --nproc_per_node=4 -m scripts.chat_eval -- \
     -i sft -g looped-d24 -a "GSM8K|HumanEval"</code></pre>
 <p class="note">Looped flags for <code>scripts.base_train</code>: <code>--routing-loop --routing-pattern=progressive --routing-gate-init=0.05</code>. The routing config is stored in each checkpoint, so SFT / eval / inference rebuild the two-pass model automatically.</p>
 
+<h2>Citation</h2>
+<p class="h2-sub">If you use looped nanochat, please cite it.</p>
+<pre><code id="bibtex">@misc{liang2026loopednanochat,
+  title        = {Looped nanochat: A Two-Pass Routing-Loop Transformer},
+  author       = {Liang, Kaizhao},
+  year         = {2026},
+  howpublished = {\url{https://github.com/kyleliang919/looped_nanochat}},
+  note         = {Built on karpathy/nanochat}
+}</code></pre>
+<button class="btn" style="margin-top:2px" onclick="navigator.clipboard.writeText(document.getElementById('bibtex').innerText).then(()=>{this.textContent='✓ copied';setTimeout(()=>this.textContent='Copy BibTeX',1500);})">Copy BibTeX</button>
+
 <footer>
   Built on <a href="https://github.com/karpathy/nanochat">karpathy/nanochat</a> @ <code>92d63d4</code> · MIT license · models on <a href="https://huggingface.co/kz919/looped-nanochat-d24">Hugging&nbsp;Face</a>.
 </footer>
