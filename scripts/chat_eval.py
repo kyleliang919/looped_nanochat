@@ -25,41 +25,52 @@ from tasks.gsm8k import GSM8K
 # -----------------------------------------------------------------------------
 # Generative evaluation loop (we go one problem at a time, sample, evaluate)
 
-def run_generative_eval(task_object, tokenizer, model, engine, num_samples, max_new_tokens, temperature, top_k, max_problems=None):
+def run_generative_eval(task_object, tokenizer, model, engine, num_samples, max_new_tokens, temperature, top_k, max_problems=None, gen_batch=64):
 
     ddp, ddp_rank, ddp_local_rank, ddp_world_size = get_dist_info()
     device = model.get_device()
 
     num_problems = len(task_object) if max_problems is None else min(len(task_object), max_problems)
 
-    # Run the evaluation
-    num_passed, total = 0, 0
-    for i in range(ddp_rank, num_problems, ddp_world_size):
+    # This rank's slice of problems.
+    my_indices = list(range(ddp_rank, num_problems, ddp_world_size))
+
+    # Decode is latency-bound, so batch many (problem, sample) prompts per generate
+    # call instead of one problem at a time. Build the full flat list of prompts
+    # (num_samples copies per problem), generate in batches, then regroup + evaluate.
+    flat_prompts = []       # token-id lists
+    owner = []              # which problem index each flat prompt belongs to
+    prompt_len = {}         # problem index -> prompt length (for stripping the prefix)
+    for i in my_indices:
         conversation = task_object[i]
-
-        # Tokenize the prompt
         encoded_prompt = tokenizer.render_for_completion(conversation)
-        # Get the completions
-        results, _ = engine.generate_batch(
-            encoded_prompt,
-            num_samples=num_samples,
-            max_tokens=max_new_tokens,
-            temperature=temperature,
-            top_k=top_k,
-        )
-        # Decode the completions as text
-        prefix_length = len(encoded_prompt)
-        completions = [tokenizer.decode(result_tokens[prefix_length:]) for result_tokens in results]
-        # Evaluate success criteria
-        outcomes = [task_object.evaluate(conversation, completion) for completion in completions]
-        passed = any(outcomes)
+        prompt_len[i] = len(encoded_prompt)
+        for _ in range(num_samples):
+            flat_prompts.append(encoded_prompt)
+            owner.append(i)
 
-        # Keep stats
-        total += 1
-        num_passed += int(passed)
-
-        # Logging (overwrite the same line in the console)
-        print(f"\r\033[KRank {ddp_rank} | {num_passed}/{total} ({100*num_passed/total:.2f}%)", end='', flush=True)
+    # Generate all completions for this rank, batched (bucketed by length internally).
+    completions_by_problem = {i: [] for i in my_indices}
+    num_passed, total = 0, 0
+    done_problems = set()
+    for s in range(0, len(flat_prompts), gen_batch):
+        batch_prompts = flat_prompts[s:s+gen_batch]
+        batch_owners = owner[s:s+gen_batch]
+        outs = engine.generate_prompts(
+            batch_prompts, max_tokens=max_new_tokens,
+            temperature=temperature, top_k=top_k)
+        for oi, out_tokens in zip(batch_owners, outs):
+            # `out_tokens` are only the newly generated tokens (prefix already stripped).
+            completions_by_problem[oi].append(tokenizer.decode(out_tokens))
+        # Evaluate any problems that now have all their samples (keeps progress live).
+        for oi in set(batch_owners):
+            if oi not in done_problems and len(completions_by_problem[oi]) == num_samples:
+                conversation = task_object[oi]
+                outcomes = [task_object.evaluate(conversation, c) for c in completions_by_problem[oi]]
+                total += 1
+                num_passed += int(any(outcomes))
+                done_problems.add(oi)
+                print(f"\r\033[KRank {ddp_rank} | {num_passed}/{total} ({100*num_passed/max(total,1):.2f}%)", end='', flush=True)
 
     # Finish the in-place progress line with a newline before final summary
     print()

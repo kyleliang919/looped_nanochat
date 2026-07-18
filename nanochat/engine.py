@@ -293,6 +293,111 @@ class Engine:
             ids = torch.tensor(token_column, dtype=torch.long, device=device).unsqueeze(1)
             logits = self.model.forward(ids, kv_cache=kv_cache_decode)[:, -1, :]  # (B, vocab_size)
 
+    @torch.inference_mode()
+    def generate_prompts(self, prompts, max_tokens, temperature=1.0, top_k=None, seed=42,
+                         max_batch=64):
+        """Generation for a BATCH OF DISTINCT PROMPTS.
+
+        Decode is latency-bound (~constant ms/step up to large batch size), so
+        running many prompts concurrently gives near-linear throughput gains over
+        one-at-a-time generation. Returns a list of completion token-id lists (only
+        newly generated tokens, terminal tokens excluded), aligned with `prompts`.
+
+        Correctness: prompts are bucketed by EXACT prompt length so each executed
+        batch is uniform-length. This reuses the model's existing uniform-position
+        decode semantics verbatim (same RoPE position and cache_seqlens for every
+        row) — no padding, no attention masking, no per-row position handling. It
+        is therefore bit-identical to running each prompt alone, just batched.
+        Tool use is intentionally not handled here (generative eval doesn't need it).
+        """
+        assert isinstance(prompts, list) and len(prompts) > 0
+        assert all(isinstance(p, list) and len(p) > 0 for p in prompts)
+        results = [None] * len(prompts)
+        # Bucket indices by exact prompt length.
+        from collections import defaultdict
+        buckets = defaultdict(list)
+        for i, p in enumerate(prompts):
+            buckets[len(p)].append(i)
+        for length, idxs in buckets.items():
+            # Split each length-bucket into chunks of at most max_batch.
+            for s in range(0, len(idxs), max_batch):
+                chunk = idxs[s:s+max_batch]
+                chunk_prompts = [prompts[i] for i in chunk]
+                outs = self._generate_uniform_batch(
+                    chunk_prompts, max_tokens, temperature, top_k, seed)
+                for i, out in zip(chunk, outs):
+                    results[i] = out
+        return results
+
+    @torch.inference_mode()
+    def _generate_uniform_batch(self, prompts, max_tokens, temperature, top_k, seed):
+        """Generate for a batch of EQUAL-LENGTH distinct prompts (one prefill, batched decode).
+
+        Handles the same tool-use state machine as the streaming generate(): when a
+        row emits <|python_end|>, its calculator expression is run and the result is
+        force-injected as the next tokens for that row.
+        """
+        device = self.model.get_device()
+        dtype = COMPUTE_DTYPE
+        B = len(prompts)
+        L = len(prompts[0])
+        assert all(len(p) == L for p in prompts)
+
+        m = self.model.config
+        kv_kwargs = {"num_heads": m.n_kv_head, "head_dim": m.n_embd // m.n_head, "num_layers": m.n_layer}
+        cache_cls = RoutingLoopKVCache if getattr(m, "routing_loop", False) else KVCache
+        get_special = lambda s: self.tokenizer.encode_special(s)
+        python_start = get_special("<|python_start|>")
+        python_end = get_special("<|python_end|>")
+        output_start = get_special("<|output_start|>")
+        output_end = get_special("<|output_end|>")
+        assistant_end = get_special("<|assistant_end|>")
+        bos = self.tokenizer.get_bos_token_id()
+        rng = torch.Generator(device=device)
+        rng.manual_seed(seed)
+
+        # Single batched prefill over all rows (uniform length => uniform positions).
+        kv_cache = cache_cls(
+            batch_size=B, seq_len=L + max_tokens, device=device, dtype=dtype, **kv_kwargs)
+        ids = torch.tensor(prompts, dtype=torch.long, device=device)  # (B, L)
+        logits = self.model.forward(ids, kv_cache=kv_cache)[:, -1, :]  # (B, vocab)
+
+        states = [RowState() for _ in range(B)]  # only tool/completion fields are used
+        results = [[] for _ in range(B)]
+        for _ in range(max_tokens):
+            sampled = sample_next_token(logits, rng, temperature, top_k)[:, 0].tolist()
+            token_column = []
+            for bi, state in enumerate(states):
+                # Forced tokens (tool output) take priority over the sampled token.
+                is_forced = len(state.forced_tokens) > 0
+                next_token = state.forced_tokens.popleft() if is_forced else sampled[bi]
+                token_column.append(next_token)
+                if not state.completed:
+                    if next_token == assistant_end or next_token == bos:
+                        state.completed = True
+                    else:
+                        results[bi].append(next_token)
+                # Tool-use state machine (mirrors streaming generate()).
+                if next_token == python_start:
+                    state.in_python_block = True
+                    state.python_expr_tokens = []
+                elif next_token == python_end and state.in_python_block:
+                    state.in_python_block = False
+                    if state.python_expr_tokens:
+                        result = use_calculator(self.tokenizer.decode(state.python_expr_tokens))
+                        if result is not None:
+                            state.forced_tokens.append(output_start)
+                            state.forced_tokens.extend(self.tokenizer.encode(str(result)))
+                            state.forced_tokens.append(output_end)
+                    state.python_expr_tokens = []
+                elif state.in_python_block:
+                    state.python_expr_tokens.append(next_token)
+            if all(s.completed for s in states):
+                break
+            next_ids = torch.tensor(token_column, dtype=torch.long, device=device).unsqueeze(1)
+            logits = self.model.forward(next_ids, kv_cache=kv_cache)[:, -1, :]
+        return results
+
     def generate_batch(self, tokens, num_samples=1, **kwargs):
         """
         Non-streaming batch generation that just returns the final token sequences.
