@@ -141,7 +141,10 @@ def _get_flex_attention():
     global _flex_attention
     if _flex_attention is None:
         from torch.nn.attention.flex_attention import flex_attention
-        _flex_attention = torch.compile(flex_attention, dynamic=False)
+        # dynamic=True so varying sequence lengths (as in eval over many tasks)
+        # don't trigger a recompile per shape and fall back to the unfused
+        # (full-scores-materializing) eager path.
+        _flex_attention = torch.compile(flex_attention, dynamic=True)
     return _flex_attention
 
 
