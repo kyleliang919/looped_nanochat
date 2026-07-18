@@ -116,9 +116,17 @@
   .eq { background: var(--surface-2); border-radius:10px; padding:14px 18px; margin:16px 0; font-size:15px;
         font-family:"SF Mono",ui-monospace,Menlo,monospace; overflow-x:auto; border:1px solid var(--border);}
   .eq b.b { color: var(--baseline); } .eq b.o { color: var(--looped); }
+  .heat-row { display:flex; gap:18px; flex-wrap:wrap; justify-content:space-between; }
+  .heat-cell { flex:1 1 240px; min-width:220px; }
+  .heat-title { font-size:12.5px; font-weight:650; text-align:center; margin-bottom:8px; color:var(--text-secondary); }
+  .heat-title .op { font-family:"SF Mono",ui-monospace,monospace; font-size:11.5px; color:var(--text-muted); font-weight:500; display:block; margin-top:2px;}
+  .tip { position:fixed; pointer-events:none; background:var(--surface-1); border:1px solid var(--border-strong);
+         border-radius:7px; padding:6px 9px; font-size:12px; box-shadow:var(--shadow); z-index:20; opacity:0;
+         transition:opacity .08s; color:var(--text-primary); white-space:nowrap; }
 </style>
 </head>
 <body>
+<div class="tip" id="tip"></div>
 <button class="toggle" onclick="(function(){var r=document.documentElement;var d=r.getAttribute('data-theme')==='dark';r.setAttribute('data-theme',d?'light':'dark');})()">◐&nbsp;theme</button>
 <div class="wrap">
 
@@ -161,6 +169,21 @@
 <figure>
 <svg id="injsvg" viewBox="0 0 860 340" width="100%" role="img" aria-label="Inside a pass-2 attention layer: q2/k2 concatenated with routing q1 and gated k1, one attention at width 2D"></svg>
 <figcaption><b>Injection, per pass-2 layer.</b> The layer's own <code>q₂,k₂</code> (this pass) are concatenated with the source layer's cached <code>q₁, k₁</code> (gate folded into the key: <code>g·k₁</code>). One causal attention at head-width <code>2D</code>, softmax-scaled by <code>1/√D</code>, is <em>exactly</em> <code>softmax(q₂k₂ᵀ + g·q₁k₁ᵀ)·v₂</code> — no attention matrix is materialized. V stays width <code>D</code> (pass-2 only). Training runs this through a fused, compiled FlexAttention kernel. Only two params are added over baseline: the per-layer <code>routing_gate_logits</code> and a 2×<code>n_embd</code> <code>pass_embeddings</code>.</figcaption>
+</figure>
+
+<h3>The bias, on a real attention map</h3>
+<p>The diagram above is the mechanism; here is what it actually <em>does</em>. Below are the real, measured attention matrices from the trained looped model on the prompt <code>"The capital of France is Paris. The capital of Japan is"</code>, at pass-2 <b>layer 3</b> (source <b>layer 12</b>, learned gate <b>g&nbsp;=&nbsp;0.79</b>). Each cell is how much a query row attends to a key column (causal, head-averaged).</p>
+<figure>
+  <div class="heat-row" id="heatrow"></div>
+  <div class="legend" style="margin-top:14px" id="heatlegend"></div>
+  <figcaption><b>Left → middle → right.</b> The layer's attention <em>without</em> the routing prior, <code>softmax(q₂k₂ᵀ)</code>; the <b>change</b> the prior induces in the final attention weights, <code>Δ = softmax(q₂k₂ᵀ+g·q₁k₁ᵀ) − softmax(q₂k₂ᵀ)</code> (blue = a cell <em>gains</em> attention, red = <em>loses</em> it); and the attention the model actually uses. The prior measurably reshapes attention — e.g. the final <code>" is"</code> query sharpens onto <code>&lt;bos&gt;</code> (0.31 → 0.41, the strong blue top-left of the Δ map) and pulls weight off mid-sequence tokens (red). Hover any cell for exact values.</figcaption>
+</figure>
+
+<h3>Every layer carries a different amount of prior</h3>
+<p>The gate <code>g = softplus(gate_logit)</code> is learned per layer. The model leans on the routing prior most in <b>early layers</b> and tapers off with depth:</p>
+<figure>
+  <svg id="gatechart" viewBox="0 0 860 240" width="100%" role="img" aria-label="Learned routing gate by layer"></svg>
+  <figcaption>Per-layer learned routing gate <code>g</code> across all 24 layers (looped-d24, post-SFT). Early layers (L0–L3) apply a strong prior (g ≈ 0.75–0.87); it decays to ≈ 0.2 by the deepest layers.</figcaption>
 </figure>
 
 <h2>Results</h2>
@@ -354,7 +377,85 @@ function drawLine(){
   el(svg,'text',{x:20,y:mT+ph/2,'font-size':12,fill:TS,transform:`rotate(-90 20 ${mT+ph/2})`,'text-anchor':'middle'},'val bpb  (lower better)');
 }
 
-function draw(){drawArch();drawInj();drawBars();drawLine();}
+// ---- real attention data (measured from looped-d24, prompt shown) ----
+const ATTN={"tokens": ["<bos>", "The", " capital", " of", " France", " is", " Paris", ".", " The", " capital", " of", " Japan", " is"], "T": 13, "target": 3, "src": 12, "gate": 0.793, "gates": [0.753, 0.87, 0.766, 0.793, 0.508, 0.532, 0.399, 0.467, 0.342, 0.445, 0.269, 0.376, 0.754, 0.281, 0.227, 0.389, 0.201, 0.357, 0.163, 0.339, 0.21, 0.304, 0.192, 0.359], "A_own": [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.5044, 0.4956, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3109, 0.2925, 0.3966, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.4073, 0.2, 0.1598, 0.2329, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.2605, 0.2476, 0.1172, 0.208, 0.1666, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.2835, 0.2197, 0.0886, 0.1904, 0.073, 0.1449, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.1796, 0.1129, 0.0936, 0.2013, 0.0675, 0.2535, 0.0915, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.2881, 0.196, 0.0607, 0.0854, 0.0509, 0.1394, 0.034, 0.1455, 0.0, 0.0, 0.0, 0.0, 0.0], [0.2473, 0.1245, 0.0605, 0.084, 0.0494, 0.1493, 0.0439, 0.1027, 0.1383, 0.0, 0.0, 0.0, 0.0], [0.2417, 0.0656, 0.0361, 0.1708, 0.0447, 0.0996, 0.0369, 0.1249, 0.0935, 0.0861, 0.0, 0.0, 0.0], [0.2864, 0.0641, 0.0234, 0.0842, 0.0709, 0.1293, 0.0467, 0.1034, 0.0856, 0.0386, 0.0674, 0.0, 0.0], [0.1903, 0.087, 0.0503, 0.0525, 0.0335, 0.0767, 0.0385, 0.1061, 0.1368, 0.0611, 0.069, 0.0984, 0.0], [0.3051, 0.0807, 0.0201, 0.0723, 0.0173, 0.0533, 0.0248, 0.1196, 0.1186, 0.0231, 0.0545, 0.0313, 0.0795]], "A_comb": [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8799, 0.1201, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.7137, 0.1697, 0.1166, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.7198, 0.0996, 0.1156, 0.0651, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.6106, 0.1461, 0.0559, 0.1171, 0.0703, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.5286, 0.2116, 0.0808, 0.0722, 0.0378, 0.069, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.5489, 0.1006, 0.0382, 0.0842, 0.0277, 0.1402, 0.0602, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.5947, 0.1639, 0.0271, 0.0223, 0.0226, 0.0635, 0.0118, 0.0941, 0.0, 0.0, 0.0, 0.0, 0.0], [0.6074, 0.0766, 0.0323, 0.0262, 0.0225, 0.0648, 0.0204, 0.1023, 0.0475, 0.0, 0.0, 0.0, 0.0], [0.6475, 0.0432, 0.0139, 0.0491, 0.0139, 0.0308, 0.0169, 0.0879, 0.0534, 0.0434, 0.0, 0.0, 0.0], [0.6174, 0.0372, 0.009, 0.0276, 0.0306, 0.0565, 0.0156, 0.0803, 0.0551, 0.0347, 0.036, 0.0, 0.0], [0.4726, 0.0643, 0.015, 0.0363, 0.0116, 0.0505, 0.0124, 0.0999, 0.0699, 0.0248, 0.0539, 0.0888, 0.0], [0.4099, 0.0748, 0.0123, 0.0309, 0.0049, 0.0358, 0.0121, 0.1187, 0.1207, 0.0287, 0.0421, 0.036, 0.0732]], "bias": [[5.3146, null, null, null, null, null, null, null, null, null, null, null, null], [6.945, 4.9715, null, null, null, null, null, null, null, null, null, null, null], [6.8628, 5.4872, 4.8071, null, null, null, null, null, null, null, null, null, null], [6.2424, 4.9753, 5.3491, 4.3981, null, null, null, null, null, null, null, null, null], [6.1766, 4.7977, 4.5839, 4.7505, 4.4615, null, null, null, null, null, null, null, null], [5.8044, 5.1442, 5.0892, 4.2116, 4.5245, 4.4394, null, null, null, null, null, null, null], [5.9078, 4.6747, 3.8939, 3.9194, 3.8979, 4.1984, 4.3719, null, null, null, null, null, null], [5.4386, 4.5353, 3.9084, 3.3694, 3.9019, 3.9276, 3.6563, 4.2779, null, null, null, null, null], [5.7213, 4.3371, 4.1937, 3.6564, 4.035, 3.9877, 4.058, 4.8184, 3.7542, null, null, null, null], [5.9613, 4.5565, 4.0214, 3.729, 3.809, 3.8021, 4.1968, 4.6247, 4.4148, 4.2916, null, null, null], [5.6939, 4.3818, 3.9691, 3.8116, 4.0863, 4.0967, 3.8303, 4.6738, 4.4851, 4.8185, 4.2989, null, null], [5.5717, 4.3594, 3.4533, 4.2929, 3.5976, 4.2443, 3.5288, 4.6015, 3.9904, 3.7597, 4.4163, 4.5597, null], [4.6543, 4.2832, 3.8678, 3.509, 3.0884, 3.9604, 3.6408, 4.3513, 4.3768, 4.5785, 4.1013, 4.4987, 4.2754]], "delta": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3755, -0.3755, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.4028, -0.1228, -0.28, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3125, -0.1004, -0.0442, -0.1678, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3501, -0.1015, -0.0613, -0.0909, -0.0963, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.2451, -0.0081, -0.0078, -0.1182, -0.0352, -0.0759, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3693, -0.0123, -0.0554, -0.1171, -0.0398, -0.1133, -0.0313, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3066, -0.0321, -0.0336, -0.0631, -0.0283, -0.0759, -0.0222, -0.0514, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3601, -0.0479, -0.0282, -0.0578, -0.0269, -0.0845, -0.0235, -0.0004, -0.0908, 0.0, 0.0, 0.0, 0.0], [0.4058, -0.0224, -0.0222, -0.1217, -0.0308, -0.0688, -0.02, -0.037, -0.0401, -0.0427, 0.0, 0.0, 0.0], [0.331, -0.0269, -0.0144, -0.0566, -0.0403, -0.0728, -0.0311, -0.0231, -0.0305, -0.0039, -0.0314, 0.0, 0.0], [0.2823, -0.0227, -0.0353, -0.0162, -0.0219, -0.0262, -0.0261, -0.0062, -0.0669, -0.0363, -0.0151, -0.0096, 0.0], [0.1048, -0.0059, -0.0078, -0.0414, -0.0124, -0.0175, -0.0127, -0.0009, 0.0021, 0.0056, -0.0124, 0.0047, -0.0063]]};
+
+// sequential blue ramp (near-zero -> high) and diverging blue<->red for the bias
+function seqBlue(t){ // t in [0,1]
+  const steps=[[205,226,251],[158,197,244],[85,152,231],[37,106,191],[13,54,107]];
+  t=Math.max(0,Math.min(1,t)); const x=t*(steps.length-1), i=Math.floor(x), f=x-i;
+  const a=steps[i], b=steps[Math.min(i+1,steps.length-1)];
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*f)},${Math.round(a[1]+(b[1]-a[1])*f)},${Math.round(a[2]+(b[2]-a[2])*f)})`;
+}
+function diverge(v,scale){ // v signed; blue positive, red negative, gray zero
+  const t=Math.max(-1,Math.min(1,v/scale));
+  const gray=getComputedStyle(document.documentElement).getPropertyValue('--surface-2').trim();
+  if(Math.abs(t)<0.02) return gray;
+  if(t>0){const s=t;return `rgb(${Math.round(240-166*s)},${Math.round(239-133*s)},${Math.round(236+15*s>255?255:236+15*s)})`;}
+  const s=-t;return `rgb(${Math.round(240+16*s>255?255:240+16*s)},${Math.round(239-180*s)},${Math.round(236-180*s)})`;
+}
+function tip(){return document.getElementById('tip');}
+function showTip(e,html){const t=tip();t.innerHTML=html;t.style.opacity=1;t.style.left=(e.clientX+12)+'px';t.style.top=(e.clientY+12)+'px';}
+function hideTip(){tip().style.opacity=0;}
+
+function heatSvg(mat,mode,scale,title){
+  const T=ATTN.T, N=NS, cell=Math.min(20,220/T), pad=2, gw=T*cell, off=6;
+  const w=gw+off, h=gw+off;
+  const svg=document.createElementNS(N,'svg');
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`); svg.setAttribute('width','100%'); svg.setAttribute('role','img');
+  for(let i=0;i<T;i++)for(let j=0;j<=i;j++){
+    const v=mat[i][j]; if(v==null) continue;
+    const fill = mode==='seq'? seqBlue(v/scale) : diverge(v,scale);
+    const r=document.createElementNS(N,'rect');
+    r.setAttribute('x',off+j*cell); r.setAttribute('y',i*cell); r.setAttribute('width',cell-0.5); r.setAttribute('height',cell-0.5);
+    r.setAttribute('rx',1.5); r.setAttribute('fill',fill);
+    r.style.cursor='crosshair';
+    const qi=ATTN.tokens[i], kj=ATTN.tokens[j];
+    r.addEventListener('mousemove',e=>showTip(e,`<b>q</b> ${escapeH(qi)} → <b>k</b> ${escapeH(kj)}<br>${title}: <b>${v.toFixed(3)}</b>`));
+    r.addEventListener('mouseleave',hideTip);
+    svg.appendChild(r);
+  }
+  return svg;
+}
+function escapeH(s){return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/ /g,'␣');}
+
+function drawHeat(){
+  const row=document.getElementById('heatrow'); if(!row) return; row.innerHTML='';
+  const defs=[
+    {m:ATTN.A_own,mode:'seq',scale:0.5,t:'Pass-2 without the prior',op:'softmax(q₂·k₂ᵀ)'},
+    {m:ATTN.delta,mode:'div',scale:0.4,t:'What the prior changes',op:'Δ attention (blue +, red −)'},
+    {m:ATTN.A_comb,mode:'seq',scale:0.5,t:'What the model uses',op:'softmax(q₂k₂ᵀ + g·q₁k₁ᵀ)'},
+  ];
+  defs.forEach(d=>{
+    const cell=document.createElement('div'); cell.className='heat-cell';
+    const tt=document.createElement('div'); tt.className='heat-title'; tt.innerHTML=d.t+'<span class="op">'+d.op+'</span>';
+    cell.appendChild(tt); cell.appendChild(heatSvg(d.m,d.mode,d.scale,d.t)); row.appendChild(cell);
+  });
+  const lg=document.getElementById('heatlegend');
+  lg.innerHTML='<span><span class="swatch" style="background:'+seqBlue(0.15)+'"></span>low attention</span>'
+    +'<span><span class="swatch" style="background:'+seqBlue(0.9)+'"></span>high attention</span>'
+    +'<span><span class="swatch" style="background:'+diverge(0.4,0.4)+'"></span>Δ: gains attention</span>'
+    +'<span><span class="swatch" style="background:'+diverge(-0.4,0.4)+'"></span>Δ: loses attention</span>';
+}
+
+function drawGate(){
+  const svg=document.getElementById('gatechart'); if(!svg) return; svg.innerHTML='';
+  const W=860,H=240,mL=40,mR=16,mT=16,mB=40,pw=W-mL-mR,ph=H-mT-mB;
+  const O=cssv('--looped'),TS=cssv('--text-secondary'),TM=cssv('--text-muted'),GR=cssv('--grid');
+  const g=ATTN.gates,n=g.length,max=1.0;
+  for(let t=0;t<=1;t+=0.25){const yy=mT+ph-t*ph;el(svg,'line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:GR,'stroke-width':1});el(svg,'text',{x:mL-8,y:yy+4,'text-anchor':'end','font-size':11,fill:TM},t.toFixed(2));}
+  const bw=pw/n*0.68, gw=pw/n;
+  g.forEach((v,i)=>{const cx=mL+gw*i+gw/2,by=mT+ph-(v/max)*ph,bh=(v/max)*ph;
+    const r=el(svg,'rect',{x:cx-bw/2,y:by,width:bw,height:bh,rx:2.5,fill:O});
+    r.style.cursor='crosshair';
+    r.addEventListener('mousemove',e=>showTip(e,`layer <b>L${i}</b><br>gate g = <b>${v.toFixed(3)}</b>`));
+    r.addEventListener('mouseleave',hideTip);
+    if(i%2===0)el(svg,'text',{x:cx,y:H-mB+18,'text-anchor':'middle','font-size':10,fill:TM},'L'+i);
+  });
+  el(svg,'text',{x:14,y:mT+ph/2,'font-size':11,fill:TS,transform:`rotate(-90 14 ${mT+ph/2})`,'text-anchor':'middle'},'gate g');
+}
+
+function draw(){drawArch();drawInj();drawBars();drawLine();drawHeat();drawGate();}
 draw();
 new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
