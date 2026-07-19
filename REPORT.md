@@ -195,6 +195,12 @@ torchrun --standalone --nproc_per_node=4 -m scripts.chat_eval -- \
 - The kernel choice matters enormously: expressing the routing bias so it stays
   on a fused attention kernel (FlexAttention) is the difference between ~2.4× and
   ~5.8× training slowdown.
+- **Trainability is the point.** Traditional looped/recurrent/weight‑tied
+  Transformers are hard to optimize (BPTT gradient pathologies, truncation bias,
+  ACT/halting instability, DEQ fixed‑point instability). The two‑pass additive
+  design — fixed 2 passes, near‑zero‑gate warm start, no fixed‑point solve, fully
+  parallel — sidesteps all of these by construction. See
+  [docs/TRAINABILITY.md](docs/TRAINABILITY.md) for the cited comparison.
 
 *Models and full artifacts: see the HuggingFace model cards for `baseline-d24`
 and `looped-d24`.*

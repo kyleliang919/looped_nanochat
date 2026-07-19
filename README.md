@@ -4,7 +4,7 @@
 
 This repo forks [`karpathy/nanochat`](https://github.com/karpathy/nanochat) (@ `92d63d4`) and adds an experimental **routing loop**: the Transformer trunk is run **twice** per forward pass, with each second-pass layer receiving a causal attention-logit prior from a selected first-pass layer. The idea, the implementation, and a fully-matched baseline-vs-looped comparison at the **d24 (~1.38B param)** scale are the point of this repository.
 
-📄 **Full write-up:** [REPORT.md](REPORT.md) · [REPORT.pdf](REPORT.pdf)
+📄 **Full write-up:** [REPORT.md](REPORT.md) · [REPORT.pdf](REPORT.pdf) · [Why it's easier to train](docs/TRAINABILITY.md)
 🤗 **Models:** [looped-nanochat-d24](https://huggingface.co/kz919/looped-nanochat-d24) · [baseline-nanochat-d24](https://huggingface.co/kz919/baseline-nanochat-d24)
 
 ## How the loop works
