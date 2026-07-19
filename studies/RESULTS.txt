@@ -1,0 +1,30 @@
+strategy    passes | acc(best-LR)      acc mean±sd |  divg%  gmax p90  seedσ@bestLR
+--------------------------------------------------------------------------------------------
+baseline        1x |        0.602   0.294±0.138   |     0%        24         0.141  (bestLR=1e-03)
+ut2             2x |        0.901   0.394±0.248   |     0%       107         0.220  (bestLR=3e-03)
+ut4             4x |        0.458   0.280±0.103   |     0%        30         0.051  (bestLR=1e-03)
+ut4_tbptt       4x |        0.164   0.150±0.007   |     0%         8         0.005  (bestLR=3e-03)
+ut4_inject      4x |        0.349   0.251±0.052   |     0%         9         0.032  (bestLR=3e-03)
+act             4x |        0.436   0.259±0.079   |     0%        15         0.079  (bestLR=1e-03)
+deq             6x |        0.168   0.155±0.008   |     0%         6         0.003  (bestLR=1e-03)
+ours            2x |        0.480   0.277±0.117   |     0%        24         0.020  (bestLR=1e-03)
+ours_hot        2x |        0.616   0.271±0.140   |     0%        31         0.094  (bestLR=1e-03)
+
+Interpretation axes:
+ - QUALITY: acc(best-LR) — peak achievable; higher = better
+ - STABILITY: divg% (lower=better), gmax p90 (grad spikes; lower=better),
+             seedσ@bestLR (run-to-run variance; lower=more reliable),
+             acc mean±sd across ALL LRs (LR-robustness; higher mean + lower sd = more forgiving)
+
+LR sensitivity (mean acc by LR, non-diverged):
+strategy        1e-03    3e-03    1e-02    3e-02
+------------------------------------------------
+baseline        0.403    0.403    0.193    0.177
+ut2             0.440    0.736    0.202    0.199
+ut4             0.392    0.338    0.198    0.193
+ut4_tbptt       0.152    0.157    0.142    0.147
+ut4_inject      0.283    0.314    0.210    0.196
+act             0.325    0.320    0.201    0.192
+deq             0.164    0.158    0.149    0.147
+ours            0.455    0.287    0.191    0.175
+ours_hot        0.495    0.223    0.199    0.166
