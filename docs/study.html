@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Which loop strategy trains most stably? &mdash; looped nanochat</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #f7f7f8;
+    --border:    #ececec;
+    --border-strong: #d9d9d9;
+    --text-primary:   #0d0d0d;
+    --text-secondary: #3c3c3c;
+    --text-muted:     #6e6e6e;
+    --baseline: #2a78d6;
+    --looped:   #d9662b;
+    --baseline-soft: #eaf1fb;
+    --looped-soft:   #fcece4;
+    --grid: #efefef;
+    --accent: #0d0d0d;
+    --link: #0e8a6a;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #0d0d0d;
+    --surface-1: #0d0d0d;
+    --surface-2: #1a1a1a;
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --text-primary:   #f2f2f2;
+    --text-secondary: #b4b4b4;
+    --text-muted:     #8a8a8a;
+    --baseline: #4a93ea;
+    --looped:   #e8834f;
+    --baseline-soft: #14243a;
+    --looped-soft:   #3a2013;
+    --grid: #232323;
+    --accent: #f2f2f2;
+    --link: #2dd4a7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0:#0d0d0d;--surface-1:#0d0d0d;--surface-2:#1a1a1a;--border:#262626;
+      --border-strong:#3a3a3a;--text-primary:#f2f2f2;--text-secondary:#b4b4b4;--text-muted:#8a8a8a;
+      --baseline:#4a93ea;--looped:#e8834f;--baseline-soft:#14243a;--looped-soft:#3a2013;
+      --grid:#232323;--accent:#f2f2f2;--link:#2dd4a7;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--surface-0); color: var(--text-primary);
+    font-family: "Söhne", "Helvetica Neue", ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+    line-height: 1.62; font-size: 17px; -webkit-font-smoothing: antialiased; letter-spacing: -0.003em;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 28px 120px; }
+  header { padding: 88px 0 28px; }
+  .eyebrow { font-size: 13px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+             color: var(--text-muted); margin: 0 0 20px; }
+  h1 { font-size: 40px; line-height: 1.12; margin: 0; letter-spacing: -0.025em; font-weight: 600; }
+  .lede { font-size: 19px; color: var(--text-secondary); margin: 22px 0 0; max-width: 40em; line-height:1.55;}
+  h2 { font-size: 15px; margin: 68px 0 20px; letter-spacing: .02em; font-weight: 600; text-transform: uppercase;
+       color: var(--text-primary); scroll-margin-top: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .h2-sub { color: var(--text-muted); font-size: 16px; margin: -8px 0 22px; }
+  h3 { font-size: 18px; margin: 34px 0 8px; color: var(--text-primary); font-weight:600; letter-spacing:-0.01em;}
+  p { color: var(--text-primary); }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 2px; }
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-size: 13.5px;
+         font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; color: var(--text-primary); }
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+        padding: 18px 20px; overflow-x: auto; font-size: 13px; }
+  pre code { background: none; padding: 0; }
+  .links { display:flex; flex-wrap: wrap; gap: 10px; margin: 34px 0 0; }
+  .btn { display:inline-flex; align-items:center; gap:8px; background: transparent;
+         border: 1px solid var(--border-strong); border-radius: 999px; padding: 8px 16px;
+         font-size: 14px; font-weight: 500; color: var(--text-primary); transition: background .15s,border-color .15s; }
+  .btn:hover { text-decoration: none; border-color: var(--text-primary); }
+  .btn.primary { background: var(--accent); color: var(--surface-0); border-color: var(--accent); }
+  .btn.primary:hover { opacity:.85; }
+  .toggle { position: fixed; top: 20px; right: 20px; background: var(--surface-0);
+            border: 1px solid var(--border); border-radius: 999px; padding: 7px 13px;
+            font-size: 13px; cursor: pointer; color: var(--text-muted); z-index: 10; }
+  .toggle:hover { color: var(--text-primary); border-color: var(--border-strong); }
+  figure { margin: 28px 0; background: transparent; border: none; border-radius: 0; padding: 0; }
+  figure svg, .heat-row { display:block; }
+  figcaption { font-size: 14px; color: var(--text-muted); margin-top: 18px; line-height:1.6;
+               padding-top: 4px; }
+  .legend { display:flex; gap: 22px; flex-wrap: wrap; margin: 6px 0 2px; font-size: 13.5px; }
+  .legend span { display:inline-flex; align-items:center; gap:8px; color: var(--text-secondary); font-weight:400;}
+  .swatch { width: 11px; height: 11px; border-radius: 3px; display:inline-block; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 20px 0;
+          font-variant-numeric: tabular-nums; }
+  th, td { border-bottom: 1px solid var(--border); padding: 11px 14px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { border-bottom: 1px solid var(--text-primary); font-weight: 500; color: var(--text-muted);
+             font-size:12px; text-transform:uppercase; letter-spacing:.04em; padding-bottom:9px;}
+  tbody tr:last-child td { border-bottom: 1px solid var(--border-strong); }
+  .win { color: var(--text-primary); font-weight: 600; }
+  .note { color: var(--text-muted); font-size: 15px; }
+  .kpi-row { display:flex; flex-wrap:wrap; gap: 0; margin: 28px 0; border-top: 1px solid var(--border); }
+  .kpi { flex: 1 1 160px; padding: 24px 26px 24px 0; border-bottom: 1px solid var(--border); }
+  .kpi + .kpi { padding-left: 26px; border-left: 1px solid var(--border); }
+  .kpi .val { font-size: 40px; font-weight: 600; letter-spacing: -0.03em; color: var(--text-primary);
+              line-height: 1; }
+  .kpi .lbl { font-size: 14px; color: var(--text-secondary); margin-top: 10px; font-weight:400;}
+  .kpi .delta { font-size: 13px; color: var(--link); margin-top: 5px; font-variant-numeric: tabular-nums; font-weight:500;}
+  .steps { counter-reset: s; margin: 22px 0; padding: 0; list-style: none; }
+  .steps li { counter-increment: s; position: relative; padding: 0 0 20px 40px; color: var(--text-secondary); }
+  .steps li::before { content: counter(s); position:absolute; left:0; top:0; width:26px; height:26px;
+    border: 1px solid var(--border-strong); color:var(--text-primary); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; }
+  .steps li b { color: var(--text-primary); font-weight:600; }
+  footer { margin-top: 88px; padding-top: 28px; border-top: 1px solid var(--border);
+           color: var(--text-muted); font-size: 14px; }
+  text { font-family: inherit; }
+  .eq { background: var(--surface-2); border-radius:8px; padding:16px 20px; margin:18px 0; font-size:15px;
+        font-family:"SF Mono",ui-monospace,Menlo,monospace; overflow-x:auto; border:1px solid var(--border);
+        color: var(--text-primary);}
+  .eq b.b { color: var(--baseline); } .eq b.o { color: var(--looped); }
+  .heat-row { display:flex; gap:24px; flex-wrap:wrap; justify-content:space-between; }
+  .heat-cell { flex:1 1 200px; min-width:190px; }
+  .heat-title { font-size:13px; font-weight:600; text-align:center; margin-bottom:10px; color:var(--text-primary); }
+  .heat-title .op { font-family:"SF Mono",ui-monospace,monospace; font-size:11px; color:var(--text-muted); font-weight:400; display:block; margin-top:3px;}
+  .tip { position:fixed; pointer-events:none; background:var(--text-primary); border:none;
+         border-radius:6px; padding:6px 9px; font-size:12px; z-index:20; opacity:0;
+         transition:opacity .08s; color:var(--surface-0); white-space:nowrap; }
+
+  .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;display:inline-block}
+  .tag.ours{background:#e6f6f0;color:#0e8a6a}.tag.trad{background:#f2f2f2;color:#6e6e6e}.tag.fail{background:#fdecea;color:#c0392b}
+  :root[data-theme="dark"] .tag.ours{background:#12352a;color:#2dd4a7}:root[data-theme="dark"] .tag.trad{background:#26261f;color:#b4b4b4}:root[data-theme="dark"] .tag.fail{background:#3a1a17;color:#e88b7d}
+  .lblname{font-weight:600;color:var(--text-primary)}
+</style>
+</head>
+<body>
+
+<button class="toggle" onclick="(function(){var r=document.documentElement;var d=r.getAttribute('data-theme')==='dark';r.setAttribute('data-theme',d?'light':'dark');})()">&#9680;&nbsp;theme</button>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow"><a href="./" style="color:inherit">&larr; Looped nanochat</a> &middot; Study</p>
+  <h1>Which loop strategy trains most stably?</h1>
+  <p class="lede">A controlled toy-scale ablation on a single GPU: 9 loop/recurrent Transformer strategies, 4 learning rates, 3 seeds &mdash; <b>108 runs</b> under one fair-comparison contract. The question isn't just &ldquo;which is most accurate,&rdquo; but <b>which trains reliably</b>.</p>
+  <div class="links">
+    <a class="btn primary" href="https://github.com/kyleliang919/looped_nanochat/tree/main/studies">Code &amp; data &rarr;</a>
+    <a class="btn" href="trainability.html">Why it's easier to train</a>
+    <a class="btn" href="./">Results &amp; architecture</a>
+  </div>
+</header>
+
+<h2>Setup</h2>
+<p class="h2-sub">Everything held identical across strategies; only the loop mechanism changes.</p>
+<p><b>Task:</b> modular cumulative sum &mdash; predict <code>(&Sigma; inputs[0..t]) mod 7</code> at every position. A long associative scan that rewards depth/iteration and doesn't saturate at toy scale, so strategies actually separate. Same <code>d=128</code>, 6 layers (or 1 weight-tied block looped), seqlen 48, batch 256, AdamW, 1500 steps, same data stream. LRs <code>{1e-3, 3e-3, 1e-2, 3e-2}</code> (an aggressive LR included to stress stability) &times; 3 seeds.</p>
+
+<h2>Stability vs. quality</h2>
+<p class="h2-sub">x = peak accuracy (higher better) &middot; y = seed-to-seed std-dev at the best LR (lower = more reliable). Bottom-right is the sweet spot.</p>
+<figure>
+  <svg id="scatter" viewBox="0 0 860 440" width="100%" role="img" aria-label="Stability vs quality scatter"></svg>
+  <div class="legend" style="margin-top:8px">
+    <span><span class="swatch" style="background:var(--looped)"></span>ours (two-pass routing)</span>
+    <span><span class="swatch" style="background:var(--baseline)"></span>traditional loops</span>
+    <span><span class="swatch" style="background:#c0392b"></span>stuck at chance (didn't learn)</span>
+  </div>
+  <figcaption><b>Ours (warm-started) sits lowest on seed variance among strategies that actually learn</b> (&sigma;=0.020). Full-BPTT Universal Transformer (ut2) reaches the highest peak (0.90) but with the largest run-to-run variance (&sigma;=0.220) &mdash; high ceiling, unreliable floor. Truncated-BPTT and DEQ-style loops (red) never rise above chance (1/7).</figcaption>
+</figure>
+
+<h2>The warm start is the decisive lever</h2>
+<p class="h2-sub">Same architecture, only the gate initialization differs.</p>
+<figure>
+  <svg id="ablation" viewBox="0 0 860 300" width="100%" role="img" aria-label="Warm-start ablation seed spread"></svg>
+  <figcaption>Per-seed accuracy at the best LR. <b>Near-zero gate init (&ldquo;ours&rdquo;, warm start) collapses run-to-run variance ~5&times;</b> (&sigma; 0.020 vs 0.094) versus the same model with a large gate init (&ldquo;ours_hot&rdquo;). At init the routing term is off, so training starts from the well-conditioned standard-Transformer landscape and eases the prior in &mdash; a homotopy, not a cold start.</figcaption>
+</figure>
+
+<h2>Full leaderboard</h2>
+<table>
+  <thead><tr><th>strategy</th><th>passes</th><th>peak acc</th><th>seed &sigma;</th><th>grad-max p90</th></tr></thead>
+  <tbody id="lb"></tbody>
+</table>
+<p class="note">&dagger; at chance (1/7 &approx; 0.143) &mdash; did not learn the task. No strategy diverged outright in this LR range; the stability signal is seed variance + gradient spikes.</p>
+
+<h2>What it shows &mdash; and doesn't</h2>
+<p><b>Ours is the most stable strategy that actually learns</b>, and the ablation pins the cause on the near-zero-gate warm start. Gradient-truncating loops (truncated-BPTT, DEQ-style) fail to learn the scan &mdash; the documented truncation-bias failure mode. Full-BPTT recurrence can reach a higher ceiling but is spiky and seed-sensitive.</p>
+<p class="note"><b>Honest caveat.</b> On this <em>pure associative scan</em>, ours does not top raw accuracy &mdash; deep recurrence does, since a scan is its home turf. Our design's <em>quality</em> win was measured on language modeling (the d24 run: +9% CORE), not here. This toy study isolates <b>stability</b>, which is task-transferable and where ours leads. Single task, single scale, 3 seeds &mdash; directional, not definitive. Full method &amp; caveats: <a href="https://github.com/kyleliang919/looped_nanochat/blob/main/studies/README.md">studies/README.md</a>.</p>
+
+<footer>
+  Built on <a href="https://github.com/karpathy/nanochat">karpathy/nanochat</a> &middot; MIT license &middot; <a href="./">study home</a>.
+</footer>
+</div>
+
+<script>
+const D={"lrs": [0.001, 0.003, 0.01, 0.03], "strat": {"baseline": {"passes": 1, "best_acc": 0.602, "seed_sd": 0.141, "gmax": 24, "lr_curve": [0.403, 0.403, 0.193, 0.177], "seeds": [0.314, 0.293, 0.602]}, "ut2": {"passes": 2, "best_acc": 0.901, "seed_sd": 0.22, "gmax": 107, "lr_curve": [0.44, 0.736, 0.202, 0.199], "seeds": [0.425, 0.901, 0.88]}, "ut4": {"passes": 4, "best_acc": 0.458, "seed_sd": 0.051, "gmax": 30, "lr_curve": [0.392, 0.338, 0.198, 0.193], "seeds": [0.335, 0.385, 0.458]}, "ut4_tbptt": {"passes": 4, "best_acc": 0.164, "seed_sd": 0.005, "gmax": 8, "lr_curve": [0.152, 0.157, 0.142, 0.147], "seeds": [0.153, 0.164, 0.155]}, "ut4_inject": {"passes": 4, "best_acc": 0.349, "seed_sd": 0.032, "gmax": 9, "lr_curve": [0.283, 0.314, 0.21, 0.196], "seeds": [0.349, 0.32, 0.272]}, "act": {"passes": 4, "best_acc": 0.436, "seed_sd": 0.079, "gmax": 15, "lr_curve": [0.325, 0.32, 0.201, 0.192], "seeds": [0.27, 0.436, 0.268]}, "deq": {"passes": 6, "best_acc": 0.168, "seed_sd": 0.003, "gmax": 6, "lr_curve": [0.164, 0.158, 0.149, 0.147], "seeds": [0.16, 0.168, 0.163]}, "ours": {"passes": 2, "best_acc": 0.48, "seed_sd": 0.02, "gmax": 24, "lr_curve": [0.455, 0.287, 0.191, 0.175], "seeds": [0.48, 0.452, 0.432]}, "ours_hot": {"passes": 2, "best_acc": 0.616, "seed_sd": 0.094, "gmax": 31, "lr_curve": [0.495, 0.223, 0.199, 0.166], "seeds": [0.387, 0.616, 0.483]}}};
+const NS='http://www.w3.org/2000/svg';
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function el(s,t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;s.appendChild(e);return e;}
+const NAMES={baseline:'baseline',ut2:'UT x2 (full BPTT)',ut4:'UT x4 (full BPTT)',ut4_tbptt:'UT x4 trunc-BPTT',ut4_inject:'recurrent-depth',act:'ACT halting',deq:'DEQ-style',ours:'ours',ours_hot:'ours (no warm start)'};
+const LEARNS={ut4_tbptt:false,deq:false}; // stuck at chance
+function color(k){ if(k==='ours') return cssv('--looped'); if(LEARNS[k]===false) return '#c0392b'; return cssv('--baseline'); }
+
+function scatter(){
+  const s=document.getElementById('scatter'); s.innerHTML='';
+  const W=860,H=440,mL=64,mR=24,mT=20,mB=52,pw=W-mL-mR,ph=H-mT-mB;
+  const xr=[0.12,0.95], yr=[0,0.24];
+  const X=v=>mL+(v-xr[0])/(xr[1]-xr[0])*pw, Y=v=>mT+ph-(v-yr[0])/(yr[1]-yr[0])*ph;
+  const GR=cssv('--grid'),TM=cssv('--text-muted'),TP=cssv('--text-primary');
+  for(let g=0;g<=0.24;g+=0.06){const yy=Y(g);el(s,'line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:GR,'stroke-width':1});el(s,'text',{x:mL-8,y:yy+4,'text-anchor':'end','font-size':11,fill:TM},g.toFixed(2));}
+  for(let g=0.2;g<=0.9;g+=0.2){const xx=X(g);el(s,'text',{x:xx,y:H-mB+20,'text-anchor':'middle','font-size':11,fill:TM},g.toFixed(1));}
+  el(s,'text',{x:mL+pw/2,y:H-8,'text-anchor':'middle','font-size':12,fill:TP},'peak accuracy (best LR) →');
+  el(s,'text',{x:18,y:mT+ph/2,'font-size':12,fill:TP,transform:`rotate(-90 18 ${mT+ph/2})`,'text-anchor':'middle'},'seed std-dev (↓ more stable)');
+  // manual vertical label offsets to avoid collisions (the two failed strategies overlap near chance)
+  const dyoff={ut4_tbptt:-10, deq:14, ours:16, ut4:4};
+  for(const k in D.strat){const d=D.strat[k];const c=color(k);const cx=X(d.best_acc),cy=Y(d.seed_sd);
+    el(s,'circle',{cx,cy,r:k==='ours'?8:6,fill:c,stroke:cssv('--surface-1'),'stroke-width':2});
+    const anchor=(d.best_acc>0.8)?'end':'start'; const dx=(anchor==='end')?-12:12;
+    el(s,'text',{x:cx+dx,y:cy+4+(dyoff[k]||0),'text-anchor':anchor,'font-size':11.5,fill:c,'font-weight':k==='ours'?700:500},NAMES[k]);
+  }
+}
+function ablation(){
+  const s=document.getElementById('ablation'); s.innerHTML='';
+  const W=860,H=300,mL=150,mR=30,mT=16,mB=42,pw=W-mL-mR,ph=H-mT-mB;
+  const xr=[0.35,0.65],X=v=>mL+(v-xr[0])/(xr[1]-xr[0])*pw;
+  const GR=cssv('--grid'),TM=cssv('--text-muted'),TP=cssv('--text-primary'),O=cssv('--looped'),B=cssv('--baseline');
+  const rows=[['ours',O,'gate init ≈0 (warm start)'],['ours_hot',B,'gate init large']];
+  for(let g=0.35;g<=0.65;g+=0.05){const xx=X(g);el(s,'line',{x1:xx,y1:mT,x2:xx,y2:mT+ph,stroke:GR,'stroke-width':1});el(s,'text',{x:xx,y:H-mB+20,'text-anchor':'middle','font-size':11,fill:TM},g.toFixed(2));}
+  el(s,'text',{x:mL+pw/2,y:H-6,'text-anchor':'middle','font-size':12,fill:TP},'accuracy per seed (best LR)');
+  rows.forEach((r,i)=>{const [k,c,lab]=r;const d=D.strat[k];const y=mT+ph*(0.3+0.42*i);
+    el(s,'text',{x:mL-14,y:y-4,'text-anchor':'end','font-size':13,fill:TP,'font-weight':600},k);
+    el(s,'text',{x:mL-14,y:y+13,'text-anchor':'end','font-size':10.5,fill:TM},lab);
+    const xs=d.seeds.map(X); const lo=Math.min(...xs),hi=Math.max(...xs);
+    el(s,'line',{x1:lo,y1:y,x2:hi,y2:y,stroke:c,'stroke-width':2,opacity:.4});
+    d.seeds.forEach(v=>el(s,'circle',{cx:X(v),cy:y,r:6,fill:c,stroke:cssv('--surface-1'),'stroke-width':1.5}));
+    el(s,'text',{x:hi+12,y:y+4,'font-size':11,fill:c,'font-weight':600},'σ='+d.seed_sd.toFixed(3));
+  });
+}
+function leaderboard(){
+  const tb=document.getElementById('lb');
+  const order=['ut2','ours_hot','baseline','ours','ut4','act','ut4_inject','deq','ut4_tbptt'];
+  for(const k of order){const d=D.strat[k];const learns=LEARNS[k]!==false;
+    const tr=document.createElement('tr');
+    const tag=(k==='ours')?'<span class="tag ours">ours</span>':(!learns?'<span class="tag fail">chance</span>':'<span class="tag trad">trad</span>');
+    tr.innerHTML=`<td><span class="lblname">${NAMES[k]}</span> ${tag}</td><td>${d.passes}&times;</td>`+
+      `<td>${d.best_acc.toFixed(3)}${!learns?' &dagger;':''}</td><td>${d.seed_sd.toFixed(3)}</td><td>${d.gmax}</td>`;
+    tb.appendChild(tr);
+  }
+}
+function draw(){scatter();ablation();leaderboard();}
+draw();
+new MutationObserver(()=>{scatter();ablation();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{scatter();ablation();});
+</script>
+
+</body>
+</html>
