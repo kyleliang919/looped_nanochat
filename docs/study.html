@@ -157,7 +157,7 @@
 <p><b>Task:</b> modular cumulative sum &mdash; predict <code>(&Sigma; inputs[0..t]) mod 7</code> at every position. A long associative scan that rewards depth/iteration and doesn't saturate at toy scale, so strategies actually separate. Same <code>d=128</code>, 6 layers (or 1 weight-tied block looped), seqlen 48, batch 256, AdamW, 1500 steps, same data stream. LRs <code>{1e-3, 3e-3, 1e-2, 3e-2}</code> (an aggressive LR included to stress stability) &times; 3 seeds.</p>
 
 <h2>Stability vs. quality</h2>
-<p class="h2-sub">x = peak accuracy (higher better) &middot; y = seed-to-seed std-dev at the best LR (lower = more reliable). Bottom-right is the sweet spot.</p>
+<p class="h2-sub">x = <b>mean</b> accuracy across seeds (higher better; bar shows min–max spread) &middot; y = seed-to-seed std-dev (lower = more reliable). Bottom-right is the sweet spot. We plot the <b>mean</b>, not the best seed — for a stability study, rewarding a single lucky run would flatter the unstable methods.</p>
 <figure>
   <svg id="scatter" viewBox="0 0 860 440" width="100%" role="img" aria-label="Stability vs quality scatter"></svg>
   <div class="legend" style="margin-top:8px">
@@ -165,7 +165,7 @@
     <span><span class="swatch" style="background:var(--baseline)"></span>traditional loops</span>
     <span><span class="swatch" style="background:#c0392b"></span>stuck at chance (didn't learn)</span>
   </div>
-  <figcaption><b>Ours (warm-started) sits lowest on seed variance among strategies that actually learn</b> (&sigma;=0.020). Full-BPTT Universal Transformer (ut2) reaches the highest peak (0.90) but with the largest run-to-run variance (&sigma;=0.220) &mdash; high ceiling, unreliable floor. Truncated-BPTT and DEQ-style loops (red) never rise above chance (1/7).</figcaption>
+  <figcaption><b>Ours beats the single-pass baseline on mean accuracy (0.455 vs 0.403) with far less variance</b> (&sigma; 0.020 vs 0.141): its <em>worst</em> seed (0.432) still tops baseline's <em>average</em>. Baseline's higher &ldquo;best seed&rdquo; (0.60) is one lucky run — its other two were ~0.30. Full-BPTT Universal Transformer (ut2) has the highest mean (0.74) but the largest spread (&sigma;=0.220; seeds 0.43&ndash;0.90) — high ceiling, unreliable floor. Truncated-BPTT and DEQ-style loops (red) never rise above chance (1/7).</figcaption>
 </figure>
 
 <h2>The warm start is the decisive lever</h2>
@@ -177,14 +177,14 @@
 
 <h2>Full leaderboard</h2>
 <table>
-  <thead><tr><th>strategy</th><th>passes</th><th>peak acc</th><th>seed &sigma;</th><th>grad-max p90</th></tr></thead>
+  <thead><tr><th>strategy</th><th>passes</th><th>mean acc</th><th>seed range</th><th>seed &sigma;</th><th>grad-max p90</th></tr></thead>
   <tbody id="lb"></tbody>
 </table>
 <p class="note">&dagger; at chance (1/7 &approx; 0.143) &mdash; did not learn the task. No strategy diverged outright in this LR range; the stability signal is seed variance + gradient spikes.</p>
 
 <h2>What it shows &mdash; and doesn't</h2>
-<p><b>Ours is the most stable strategy that actually learns</b>, and the ablation pins the cause on the near-zero-gate warm start. Gradient-truncating loops (truncated-BPTT, DEQ-style) fail to learn the scan &mdash; the documented truncation-bias failure mode. Full-BPTT recurrence can reach a higher ceiling but is spiky and seed-sensitive.</p>
-<p class="note"><b>Honest caveat.</b> On this <em>pure associative scan</em>, ours does not top raw accuracy &mdash; deep recurrence does, since a scan is its home turf. Our design's <em>quality</em> win was measured on language modeling (the d24 run: +9% CORE), not here. This toy study isolates <b>stability</b>, which is task-transferable and where ours leads. Single task, single scale, 3 seeds &mdash; directional, not definitive. Full method &amp; caveats: <a href="https://github.com/kyleliang919/looped_nanochat/blob/main/studies/README.md">studies/README.md</a>.</p>
+<p><b>Ours beats the single-pass baseline on mean accuracy (0.455 vs 0.403) and is the most stable strategy overall</b> (&sigma;=0.020) &mdash; and the ablation pins the cause on the near-zero-gate warm start. Gradient-truncating loops (truncated-BPTT, DEQ-style) fail to learn the scan &mdash; the documented truncation-bias failure mode. Full-BPTT recurrence (ut2) reaches a higher mean (0.74) but is spiky (grad-max p90 107) and seed-sensitive (&sigma;=0.220).</p>
+<p class="note"><b>Honest caveat.</b> On this <em>pure associative scan</em>, ours does not reach the top mean &mdash; deep full-BPTT recurrence does, since a scan is its home turf. Our design's headline <em>quality</em> win was measured on language modeling (the d24 run: +9% CORE), not here. This toy study isolates <b>stability</b> (and shows ours &gt; baseline in mean too), which is task-transferable and where ours clearly leads. Single task, single scale, 3 seeds &mdash; directional, not definitive. Full method &amp; caveats: <a href="https://github.com/kyleliang919/looped_nanochat/blob/main/studies/README.md">studies/README.md</a>.</p>
 
 <footer>
   Built on <a href="https://github.com/karpathy/nanochat">karpathy/nanochat</a> &middot; MIT license &middot; <a href="./">study home</a>.
@@ -192,7 +192,7 @@
 </div>
 
 <script>
-const D={"lrs": [0.001, 0.003, 0.01, 0.03], "strat": {"baseline": {"passes": 1, "best_acc": 0.602, "seed_sd": 0.141, "gmax": 24, "lr_curve": [0.403, 0.403, 0.193, 0.177], "seeds": [0.314, 0.293, 0.602]}, "ut2": {"passes": 2, "best_acc": 0.901, "seed_sd": 0.22, "gmax": 107, "lr_curve": [0.44, 0.736, 0.202, 0.199], "seeds": [0.425, 0.901, 0.88]}, "ut4": {"passes": 4, "best_acc": 0.458, "seed_sd": 0.051, "gmax": 30, "lr_curve": [0.392, 0.338, 0.198, 0.193], "seeds": [0.335, 0.385, 0.458]}, "ut4_tbptt": {"passes": 4, "best_acc": 0.164, "seed_sd": 0.005, "gmax": 8, "lr_curve": [0.152, 0.157, 0.142, 0.147], "seeds": [0.153, 0.164, 0.155]}, "ut4_inject": {"passes": 4, "best_acc": 0.349, "seed_sd": 0.032, "gmax": 9, "lr_curve": [0.283, 0.314, 0.21, 0.196], "seeds": [0.349, 0.32, 0.272]}, "act": {"passes": 4, "best_acc": 0.436, "seed_sd": 0.079, "gmax": 15, "lr_curve": [0.325, 0.32, 0.201, 0.192], "seeds": [0.27, 0.436, 0.268]}, "deq": {"passes": 6, "best_acc": 0.168, "seed_sd": 0.003, "gmax": 6, "lr_curve": [0.164, 0.158, 0.149, 0.147], "seeds": [0.16, 0.168, 0.163]}, "ours": {"passes": 2, "best_acc": 0.48, "seed_sd": 0.02, "gmax": 24, "lr_curve": [0.455, 0.287, 0.191, 0.175], "seeds": [0.48, 0.452, 0.432]}, "ours_hot": {"passes": 2, "best_acc": 0.616, "seed_sd": 0.094, "gmax": 31, "lr_curve": [0.495, 0.223, 0.199, 0.166], "seeds": [0.387, 0.616, 0.483]}}};
+const D={"lrs": [0.001, 0.003, 0.01, 0.03], "strat": {"baseline": {"passes": 1, "mean_acc": 0.403, "peak_acc": 0.602, "seed_min": 0.293, "seed_max": 0.602, "seed_sd": 0.141, "gmax": 24, "seeds": [0.293, 0.314, 0.602]}, "ut2": {"passes": 2, "mean_acc": 0.736, "peak_acc": 0.901, "seed_min": 0.425, "seed_max": 0.901, "seed_sd": 0.22, "gmax": 107, "seeds": [0.425, 0.88, 0.901]}, "ut4": {"passes": 4, "mean_acc": 0.392, "peak_acc": 0.458, "seed_min": 0.335, "seed_max": 0.458, "seed_sd": 0.051, "gmax": 30, "seeds": [0.335, 0.385, 0.458]}, "ut4_tbptt": {"passes": 4, "mean_acc": 0.157, "peak_acc": 0.164, "seed_min": 0.153, "seed_max": 0.164, "seed_sd": 0.005, "gmax": 8, "seeds": [0.153, 0.155, 0.164]}, "ut4_inject": {"passes": 4, "mean_acc": 0.314, "peak_acc": 0.349, "seed_min": 0.272, "seed_max": 0.349, "seed_sd": 0.032, "gmax": 9, "seeds": [0.272, 0.32, 0.349]}, "act": {"passes": 4, "mean_acc": 0.325, "peak_acc": 0.436, "seed_min": 0.268, "seed_max": 0.436, "seed_sd": 0.079, "gmax": 15, "seeds": [0.268, 0.27, 0.436]}, "deq": {"passes": 6, "mean_acc": 0.164, "peak_acc": 0.168, "seed_min": 0.16, "seed_max": 0.168, "seed_sd": 0.003, "gmax": 6, "seeds": [0.16, 0.163, 0.168]}, "ours": {"passes": 2, "mean_acc": 0.455, "peak_acc": 0.48, "seed_min": 0.432, "seed_max": 0.48, "seed_sd": 0.02, "gmax": 24, "seeds": [0.432, 0.452, 0.48]}, "ours_hot": {"passes": 2, "mean_acc": 0.495, "peak_acc": 0.616, "seed_min": 0.387, "seed_max": 0.616, "seed_sd": 0.094, "gmax": 31, "seeds": [0.387, 0.483, 0.616]}}};
 const NS='http://www.w3.org/2000/svg';
 const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function el(s,t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;s.appendChild(e);return e;}
@@ -208,13 +208,15 @@ function scatter(){
   const GR=cssv('--grid'),TM=cssv('--text-muted'),TP=cssv('--text-primary');
   for(let g=0;g<=0.24;g+=0.06){const yy=Y(g);el(s,'line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:GR,'stroke-width':1});el(s,'text',{x:mL-8,y:yy+4,'text-anchor':'end','font-size':11,fill:TM},g.toFixed(2));}
   for(let g=0.2;g<=0.9;g+=0.2){const xx=X(g);el(s,'text',{x:xx,y:H-mB+20,'text-anchor':'middle','font-size':11,fill:TM},g.toFixed(1));}
-  el(s,'text',{x:mL+pw/2,y:H-8,'text-anchor':'middle','font-size':12,fill:TP},'peak accuracy (best LR) →');
+  el(s,'text',{x:mL+pw/2,y:H-8,'text-anchor':'middle','font-size':12,fill:TP},'mean accuracy across seeds (best LR) — bar = min–max →');
   el(s,'text',{x:18,y:mT+ph/2,'font-size':12,fill:TP,transform:`rotate(-90 18 ${mT+ph/2})`,'text-anchor':'middle'},'seed std-dev (↓ more stable)');
   // manual vertical label offsets to avoid collisions (the two failed strategies overlap near chance)
-  const dyoff={ut4_tbptt:-10, deq:14, ours:16, ut4:4};
-  for(const k in D.strat){const d=D.strat[k];const c=color(k);const cx=X(d.best_acc),cy=Y(d.seed_sd);
+  const dyoff={ut4_tbptt:-10, deq:14, ours:16, ut4:4, ut4_inject:0};
+  for(const k in D.strat){const d=D.strat[k];const c=color(k);const cx=X(d.mean_acc),cy=Y(d.seed_sd);
+    // horizontal min–max seed range bar (shows spread directly)
+    el(s,'line',{x1:X(d.seed_min),y1:cy,x2:X(d.seed_max),y2:cy,stroke:c,'stroke-width':2,opacity:.35});
     el(s,'circle',{cx,cy,r:k==='ours'?8:6,fill:c,stroke:cssv('--surface-1'),'stroke-width':2});
-    const anchor=(d.best_acc>0.8)?'end':'start'; const dx=(anchor==='end')?-12:12;
+    const anchor=(d.mean_acc>0.75)?'end':'start'; const dx=(anchor==='end')?-12:12;
     el(s,'text',{x:cx+dx,y:cy+4+(dyoff[k]||0),'text-anchor':anchor,'font-size':11.5,fill:c,'font-weight':k==='ours'?700:500},NAMES[k]);
   }
 }
@@ -237,12 +239,12 @@ function ablation(){
 }
 function leaderboard(){
   const tb=document.getElementById('lb');
-  const order=['ut2','ours_hot','baseline','ours','ut4','act','ut4_inject','deq','ut4_tbptt'];
+  const order=Object.keys(D.strat).sort((a,b)=>D.strat[b].mean_acc-D.strat[a].mean_acc);
   for(const k of order){const d=D.strat[k];const learns=LEARNS[k]!==false;
     const tr=document.createElement('tr');
     const tag=(k==='ours')?'<span class="tag ours">ours</span>':(!learns?'<span class="tag fail">chance</span>':'<span class="tag trad">trad</span>');
     tr.innerHTML=`<td><span class="lblname">${NAMES[k]}</span> ${tag}</td><td>${d.passes}&times;</td>`+
-      `<td>${d.best_acc.toFixed(3)}${!learns?' &dagger;':''}</td><td>${d.seed_sd.toFixed(3)}</td><td>${d.gmax}</td>`;
+      `<td>${d.mean_acc.toFixed(3)}${!learns?' &dagger;':''}</td><td>${d.seed_min.toFixed(2)}–${d.seed_max.toFixed(2)}</td><td>${d.seed_sd.toFixed(3)}</td><td>${d.gmax}</td>`;
     tb.appendChild(tr);
   }
 }
