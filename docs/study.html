@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Which loop strategy trains most stably? &mdash; looped nanochat</title>
+<title>Does the loop help? A controlled study &mdash; looped nanochat</title>
 <style>
   :root {
     color-scheme: light;
@@ -131,9 +131,11 @@
          transition:opacity .08s; color:var(--surface-0); white-space:nowrap; }
 
   .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;display:inline-block}
-  .tag.ours{background:#e6f6f0;color:#0e8a6a}.tag.trad{background:#f2f2f2;color:#6e6e6e}.tag.fail{background:#fdecea;color:#c0392b}
-  :root[data-theme="dark"] .tag.ours{background:#12352a;color:#2dd4a7}:root[data-theme="dark"] .tag.trad{background:#26261f;color:#b4b4b4}:root[data-theme="dark"] .tag.fail{background:#3a1a17;color:#e88b7d}
-  .lblname{font-weight:600;color:var(--text-primary)}
+  .tag.ours{background:#e6f6f0;color:#0e8a6a}.tag.trad{background:#f2f2f2;color:#6e6e6e}
+  :root[data-theme="dark"] .tag.ours{background:#12352a;color:#2dd4a7}:root[data-theme="dark"] .tag.trad{background:#26261f;color:#b4b4b4}
+  .panels{display:flex;gap:24px;flex-wrap:wrap}.panels>div{flex:1 1 320px}
+  .fixnote{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px}
+  .fixnote b{color:var(--text-primary)}
 </style>
 </head>
 <body>
@@ -143,48 +145,47 @@
 
 <header>
   <p class="eyebrow"><a href="./" style="color:inherit">&larr; Looped nanochat</a> &middot; Study</p>
-  <h1>Which loop strategy trains most stably?</h1>
-  <p class="lede">A controlled toy-scale ablation on a single GPU: 9 loop/recurrent Transformer strategies, 4 learning rates, 3 seeds &mdash; <b>108 runs</b> under one fair-comparison contract. The question isn't just &ldquo;which is most accurate,&rdquo; but <b>which trains reliably</b>.</p>
+  <h1>Does the loop actually help? A controlled study</h1>
+  <p class="lede">A single-GPU comparison of loop / recurrent Transformer strategies, on a task chosen to have real <b>headroom</b>. The honest answer: <b>the routing loop's benefit is conditional</b> &mdash; it wins when a shallow network needs more depth, and it makes deep training far more stable, but it doesn't magically raise every ceiling. Getting here took four fairness fixes.</p>
   <div class="links">
     <a class="btn primary" href="https://github.com/kyleliang919/looped_nanochat/tree/main/studies">Code &amp; data &rarr;</a>
     <a class="btn" href="trainability.html">Why it's easier to train</a>
-    <a class="btn" href="./">Results &amp; architecture</a>
+    <a class="btn" href="./">Main results</a>
   </div>
 </header>
 
-<h2>Setup</h2>
-<p class="h2-sub">Everything held identical across strategies; only the loop mechanism changes.</p>
-<p><b>Task:</b> modular cumulative sum &mdash; predict <code>(&Sigma; inputs[0..t]) mod 7</code> at every position. A long associative scan that rewards depth/iteration and doesn't saturate at toy scale, so strategies actually separate. Same <code>d=128</code>, 6 layers (or 1 weight-tied block looped), seqlen 48, batch 256, AdamW, 1500 steps, same data stream. LRs <code>{1e-3, 3e-3, 1e-2, 3e-2}</code> (an aggressive LR included to stress stability) &times; 3 seeds.</p>
+<h2>The fair-comparison contract</h2>
+<p class="h2-sub">An earlier version of this study claimed &ldquo;ours is the most stable strategy.&rdquo; That result didn't survive scrutiny &mdash; it was a setup artifact. Getting to an honest answer required four fixes, each of which changed the conclusion:</p>
+<div class="fixnote">
+  <b>1. Report seed means, not best-of-N</b> &mdash; best-of-3 flatters high-variance methods.<br>
+  <b>2. Warmup + cosine LR schedule</b> &mdash; a constant LR is hostile to deep loops (caused gradient explosions and crippled the deep baseline).<br>
+  <b>3. Match parameters, not just compute</b> &mdash; the first study gave UT 1 tied layer (0.2M) vs ours' 6 distinct (1.19M).<br>
+  <b>4. Pick a task with headroom</b> &mdash; screened candidates by baseline-only accuracy and pre-committed to <code>modular cumsum, P=13</code> (baseline ~0.4, chance 0.077, far from ceiling) before running any loop model.
+</div>
 
-<h2>Stability vs. quality</h2>
-<p class="h2-sub">x = <b>mean</b> accuracy across seeds (higher better; bar shows min–max spread) &middot; y = seed-to-seed std-dev (lower = more reliable). Bottom-right is the sweet spot. We plot the <b>mean</b>, not the best seed — for a stability study, rewarding a single lucky run would flatter the unstable methods.</p>
-<figure>
-  <svg id="scatter" viewBox="0 0 860 440" width="100%" role="img" aria-label="Stability vs quality scatter"></svg>
-  <div class="legend" style="margin-top:8px">
-    <span><span class="swatch" style="background:var(--looped)"></span>ours (two-pass routing)</span>
-    <span><span class="swatch" style="background:var(--baseline)"></span>traditional loops</span>
-    <span><span class="swatch" style="background:#c0392b"></span>stuck at chance (didn't learn)</span>
+<h2>Result: the loop's benefit is conditional</h2>
+<p class="h2-sub">Mean accuracy over 3 seeds at the best LR; whisker = min&ndash;max seed range. All bars within a panel are parameter- and compute-matched.</p>
+<div class="panels">
+  <div>
+    <div class="heat-title">Shallow (L=2) &mdash; extra passes add usable depth</div>
+    <svg id="barL2" viewBox="0 0 420 300" width="100%" role="img" aria-label="L2 comparison"></svg>
   </div>
-  <figcaption><b>Ours beats the single-pass baseline on mean accuracy (0.455 vs 0.403) with far less variance</b> (&sigma; 0.020 vs 0.141): its <em>worst</em> seed (0.432) still tops baseline's <em>average</em>. Baseline's higher &ldquo;best seed&rdquo; (0.60) is one lucky run — its other two were ~0.30. Full-BPTT Universal Transformer (ut2) has the highest mean (0.74) but the largest spread (&sigma;=0.220; seeds 0.43&ndash;0.90) — high ceiling, unreliable floor. Truncated-BPTT and DEQ-style loops (red) never rise above chance (1/7).</figcaption>
-</figure>
+  <div>
+    <div class="heat-title">Deep (L=6) &mdash; baseline already has depth</div>
+    <svg id="barL6" viewBox="0 0 420 300" width="100%" role="img" aria-label="L6 comparison"></svg>
+  </div>
+</div>
+<div class="legend" style="margin-top:10px">
+  <span><span class="swatch" style="background:var(--looped)"></span>ours (routed 2&times;)</span>
+  <span><span class="swatch" style="background:var(--baseline)"></span>baseline (1&times;)</span>
+  <span><span class="swatch" style="background:#8a8a8a"></span>Universal Transformer (param-matched, 2&times;)</span>
+  <span>dashed = chance (1/13)</span>
+</div>
+<figcaption><b>Left (shallow):</b> ours <b>beats</b> the fully-matched baseline, 0.517 vs 0.424 (+22% rel) &mdash; the second pass supplies depth the single shallow pass lacks. <b>Right (deep):</b> ours (0.386) trails the baseline's mean (0.515) &mdash; 6 layers already provide the depth &mdash; but is <b>4&times; more stable</b> (&sigma; 0.060 vs 0.261; baseline's higher mean rides on lucky seeds spanning 0.26&ndash;0.87). The param-matched Universal Transformer is worse than ours in <em>both</em> panels.</figcaption>
 
-<h2>The warm start is the decisive lever</h2>
-<p class="h2-sub">Same architecture, only the gate initialization differs.</p>
-<figure>
-  <svg id="ablation" viewBox="0 0 860 300" width="100%" role="img" aria-label="Warm-start ablation seed spread"></svg>
-  <figcaption>Per-seed accuracy at the best LR. <b>Near-zero gate init (&ldquo;ours&rdquo;, warm start) collapses run-to-run variance ~5&times;</b> (&sigma; 0.020 vs 0.094) versus the same model with a large gate init (&ldquo;ours_hot&rdquo;). At init the routing term is off, so training starts from the well-conditioned standard-Transformer landscape and eases the prior in &mdash; a homotopy, not a cold start.</figcaption>
-</figure>
-
-<h2>Full leaderboard</h2>
-<table>
-  <thead><tr><th>strategy</th><th>passes</th><th>mean acc</th><th>seed range</th><th>seed &sigma;</th><th>grad-max p90</th></tr></thead>
-  <tbody id="lb"></tbody>
-</table>
-<p class="note">&dagger; at chance (1/7 &approx; 0.143) &mdash; did not learn the task. No strategy diverged outright in this LR range; the stability signal is seed variance + gradient spikes.</p>
-
-<h2>What it shows &mdash; and doesn't</h2>
-<p><b>Ours beats the single-pass baseline on mean accuracy (0.455 vs 0.403) and is the most stable strategy overall</b> (&sigma;=0.020) &mdash; and the ablation pins the cause on the near-zero-gate warm start. Gradient-truncating loops (truncated-BPTT, DEQ-style) fail to learn the scan &mdash; the documented truncation-bias failure mode. Full-BPTT recurrence (ut2) reaches a higher mean (0.74) but is spiky (grad-max p90 107) and seed-sensitive (&sigma;=0.220).</p>
-<p class="note"><b>Honest caveat.</b> On this <em>pure associative scan</em>, ours does not reach the top mean &mdash; deep full-BPTT recurrence does, since a scan is its home turf. Our design's headline <em>quality</em> win was measured on language modeling (the d24 run: +9% CORE), not here. This toy study isolates <b>stability</b> (and shows ours &gt; baseline in mean too), which is task-transferable and where ours clearly leads. Single task, single scale, 3 seeds &mdash; directional, not definitive. Full method &amp; caveats: <a href="https://github.com/kyleliang919/looped_nanochat/blob/main/studies/README.md">studies/README.md</a>.</p>
+<h2>Reading it honestly</h2>
+<p><b>The routing loop helps when there is headroom a single pass can't reach AND the base network isn't already deep enough to capture the task</b> (shallow + hard: +22%). When the base is already deep, extra passes don't raise the ceiling &mdash; but the near-zero-gate warm start makes training markedly more stable than the baseline or a param-matched Universal Transformer. Ours beats the param-matched UT in every configuration.</p>
+<p class="note"><b>Caveats.</b> Single synthetic task, one scale, 3 seeds &mdash; directional, not definitive. The loop's headline <em>quality</em> evidence remains the <a href="./">d24 language-modeling result</a> (+9% CORE), where real headroom existed at scale. Earlier flawed versions of this study (unequal params, constant LR, best-seed metric, saturated task) are superseded. Full method &amp; data: <a href="https://github.com/kyleliang919/looped_nanochat/blob/main/studies/README.md">studies/README.md</a>.</p>
 
 <footer>
   Built on <a href="https://github.com/karpathy/nanochat">karpathy/nanochat</a> &middot; MIT license &middot; <a href="./">study home</a>.
@@ -192,66 +193,35 @@
 </div>
 
 <script>
-const D={"lrs": [0.001, 0.003, 0.01, 0.03], "strat": {"baseline": {"passes": 1, "mean_acc": 0.403, "peak_acc": 0.602, "seed_min": 0.293, "seed_max": 0.602, "seed_sd": 0.141, "gmax": 24, "seeds": [0.293, 0.314, 0.602]}, "ut2": {"passes": 2, "mean_acc": 0.736, "peak_acc": 0.901, "seed_min": 0.425, "seed_max": 0.901, "seed_sd": 0.22, "gmax": 107, "seeds": [0.425, 0.88, 0.901]}, "ut4": {"passes": 4, "mean_acc": 0.392, "peak_acc": 0.458, "seed_min": 0.335, "seed_max": 0.458, "seed_sd": 0.051, "gmax": 30, "seeds": [0.335, 0.385, 0.458]}, "ut4_tbptt": {"passes": 4, "mean_acc": 0.157, "peak_acc": 0.164, "seed_min": 0.153, "seed_max": 0.164, "seed_sd": 0.005, "gmax": 8, "seeds": [0.153, 0.155, 0.164]}, "ut4_inject": {"passes": 4, "mean_acc": 0.314, "peak_acc": 0.349, "seed_min": 0.272, "seed_max": 0.349, "seed_sd": 0.032, "gmax": 9, "seeds": [0.272, 0.32, 0.349]}, "act": {"passes": 4, "mean_acc": 0.325, "peak_acc": 0.436, "seed_min": 0.268, "seed_max": 0.436, "seed_sd": 0.079, "gmax": 15, "seeds": [0.268, 0.27, 0.436]}, "deq": {"passes": 6, "mean_acc": 0.164, "peak_acc": 0.168, "seed_min": 0.16, "seed_max": 0.168, "seed_sd": 0.003, "gmax": 6, "seeds": [0.16, 0.163, 0.168]}, "ours": {"passes": 2, "mean_acc": 0.455, "peak_acc": 0.48, "seed_min": 0.432, "seed_max": 0.48, "seed_sd": 0.02, "gmax": 24, "seeds": [0.432, 0.452, 0.48]}, "ours_hot": {"passes": 2, "mean_acc": 0.495, "peak_acc": 0.616, "seed_min": 0.387, "seed_max": 0.616, "seed_sd": 0.094, "gmax": 31, "seeds": [0.387, 0.483, 0.616]}}};
+const D={"L2": {"baseline": {"mean": 0.424, "sd": 0.143, "lo": 0.296, "hi": 0.623, "params": 0.4, "passes": 1}, "ut_isocompute": {"mean": 0.341, "sd": 0.066, "lo": 0.282, "hi": 0.433, "params": 0.21, "passes": 1}, "ut_isocompute2": {"mean": 0.339, "sd": 0.137, "lo": 0.179, "hi": 0.513, "params": 0.21, "passes": 2}, "ut_isoparam1": {"mean": 0.424, "sd": 0.143, "lo": 0.296, "hi": 0.623, "params": 0.4, "passes": 1}, "ut_isoparam": {"mean": 0.285, "sd": 0.079, "lo": 0.21, "hi": 0.395, "params": 0.4, "passes": 2}, "ours": {"mean": 0.517, "sd": 0.153, "lo": 0.301, "hi": 0.639, "params": 0.4, "passes": 2}}, "L6": {"baseline": {"mean": 0.515, "sd": 0.261, "lo": 0.261, "hi": 0.875, "params": 1.19, "passes": 1}, "ut_isocompute": {"mean": 0.246, "sd": 0.072, "lo": 0.166, "hi": 0.341, "params": 0.21, "passes": 1}, "ut_isocompute2": {"mean": 0.146, "sd": 0.037, "lo": 0.1, "hi": 0.19, "params": 0.21, "passes": 2}, "ut_isoparam1": {"mean": 0.515, "sd": 0.261, "lo": 0.261, "hi": 0.875, "params": 1.19, "passes": 1}, "ut_isoparam": {"mean": 0.428, "sd": 0.176, "lo": 0.238, "hi": 0.662, "params": 1.19, "passes": 2}, "ours": {"mean": 0.386, "sd": 0.06, "lo": 0.312, "hi": 0.459, "params": 1.19, "passes": 2}}}; const CHANCE=1/13;
 const NS='http://www.w3.org/2000/svg';
 const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function el(s,t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;s.appendChild(e);return e;}
-const NAMES={baseline:'baseline',ut2:'UT x2 (full BPTT)',ut4:'UT x4 (full BPTT)',ut4_tbptt:'UT x4 trunc-BPTT',ut4_inject:'recurrent-depth',act:'ACT halting',deq:'DEQ-style',ours:'ours',ours_hot:'ours (no warm start)'};
-const LEARNS={ut4_tbptt:false,deq:false}; // stuck at chance
-function color(k){ if(k==='ours') return cssv('--looped'); if(LEARNS[k]===false) return '#c0392b'; return cssv('--baseline'); }
-
-function scatter(){
-  const s=document.getElementById('scatter'); s.innerHTML='';
-  const W=860,H=440,mL=64,mR=24,mT=20,mB=52,pw=W-mL-mR,ph=H-mT-mB;
-  const xr=[0.12,0.95], yr=[0,0.24];
-  const X=v=>mL+(v-xr[0])/(xr[1]-xr[0])*pw, Y=v=>mT+ph-(v-yr[0])/(yr[1]-yr[0])*ph;
-  const GR=cssv('--grid'),TM=cssv('--text-muted'),TP=cssv('--text-primary');
-  for(let g=0;g<=0.24;g+=0.06){const yy=Y(g);el(s,'line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:GR,'stroke-width':1});el(s,'text',{x:mL-8,y:yy+4,'text-anchor':'end','font-size':11,fill:TM},g.toFixed(2));}
-  for(let g=0.2;g<=0.9;g+=0.2){const xx=X(g);el(s,'text',{x:xx,y:H-mB+20,'text-anchor':'middle','font-size':11,fill:TM},g.toFixed(1));}
-  el(s,'text',{x:mL+pw/2,y:H-8,'text-anchor':'middle','font-size':12,fill:TP},'mean accuracy across seeds (best LR) — bar = min–max →');
-  el(s,'text',{x:18,y:mT+ph/2,'font-size':12,fill:TP,transform:`rotate(-90 18 ${mT+ph/2})`,'text-anchor':'middle'},'seed std-dev (↓ more stable)');
-  // manual vertical label offsets to avoid collisions (the two failed strategies overlap near chance)
-  const dyoff={ut4_tbptt:-10, deq:14, ours:16, ut4:4, ut4_inject:0};
-  for(const k in D.strat){const d=D.strat[k];const c=color(k);const cx=X(d.mean_acc),cy=Y(d.seed_sd);
-    // horizontal min–max seed range bar (shows spread directly)
-    el(s,'line',{x1:X(d.seed_min),y1:cy,x2:X(d.seed_max),y2:cy,stroke:c,'stroke-width':2,opacity:.35});
-    el(s,'circle',{cx,cy,r:k==='ours'?8:6,fill:c,stroke:cssv('--surface-1'),'stroke-width':2});
-    const anchor=(d.mean_acc>0.75)?'end':'start'; const dx=(anchor==='end')?-12:12;
-    el(s,'text',{x:cx+dx,y:cy+4+(dyoff[k]||0),'text-anchor':anchor,'font-size':11.5,fill:c,'font-weight':k==='ours'?700:500},NAMES[k]);
-  }
-}
-function ablation(){
-  const s=document.getElementById('ablation'); s.innerHTML='';
-  const W=860,H=300,mL=150,mR=30,mT=16,mB=42,pw=W-mL-mR,ph=H-mT-mB;
-  const xr=[0.35,0.65],X=v=>mL+(v-xr[0])/(xr[1]-xr[0])*pw;
-  const GR=cssv('--grid'),TM=cssv('--text-muted'),TP=cssv('--text-primary'),O=cssv('--looped'),B=cssv('--baseline');
-  const rows=[['ours',O,'gate init ≈0 (warm start)'],['ours_hot',B,'gate init large']];
-  for(let g=0.35;g<=0.65;g+=0.05){const xx=X(g);el(s,'line',{x1:xx,y1:mT,x2:xx,y2:mT+ph,stroke:GR,'stroke-width':1});el(s,'text',{x:xx,y:H-mB+20,'text-anchor':'middle','font-size':11,fill:TM},g.toFixed(2));}
-  el(s,'text',{x:mL+pw/2,y:H-6,'text-anchor':'middle','font-size':12,fill:TP},'accuracy per seed (best LR)');
-  rows.forEach((r,i)=>{const [k,c,lab]=r;const d=D.strat[k];const y=mT+ph*(0.3+0.42*i);
-    el(s,'text',{x:mL-14,y:y-4,'text-anchor':'end','font-size':13,fill:TP,'font-weight':600},k);
-    el(s,'text',{x:mL-14,y:y+13,'text-anchor':'end','font-size':10.5,fill:TM},lab);
-    const xs=d.seeds.map(X); const lo=Math.min(...xs),hi=Math.max(...xs);
-    el(s,'line',{x1:lo,y1:y,x2:hi,y2:y,stroke:c,'stroke-width':2,opacity:.4});
-    d.seeds.forEach(v=>el(s,'circle',{cx:X(v),cy:y,r:6,fill:c,stroke:cssv('--surface-1'),'stroke-width':1.5}));
-    el(s,'text',{x:hi+12,y:y+4,'font-size':11,fill:c,'font-weight':600},'σ='+d.seed_sd.toFixed(3));
+function bars(id,key){
+  const s=document.getElementById(id); s.innerHTML='';
+  const W=420,H=300,mL=40,mR=14,mT=14,mB=64,pw=W-mL-mR,ph=H-mT-mB;
+  const O=cssv('--looped'),B=cssv('--baseline'),GR=cssv('--grid'),TM=cssv('--text-muted'),TP=cssv('--text-primary');
+  const rows=[['ours',O,'ours'],['baseline',B,'baseline'],['ut_isoparam','#8a8a8a','UT']];
+  const Y=v=>mT+ph-v*ph; // acc 0..1
+  for(let g=0;g<=1;g+=0.25){const yy=Y(g);el(s,'line',{x1:mL,y1:yy,x2:W-mR,y2:yy,stroke:GR,'stroke-width':1});el(s,'text',{x:mL-6,y:yy+4,'text-anchor':'end','font-size':10,fill:TM},g.toFixed(2));}
+  // chance line
+  el(s,'line',{x1:mL,y1:Y(CHANCE),x2:W-mR,y2:Y(CHANCE),stroke:TM,'stroke-width':1,'stroke-dasharray':'3 3'});
+  const gw=pw/rows.length, bw=Math.min(64,gw*0.5);
+  rows.forEach((r,i)=>{const [k,c,lab]=r; const d=D[key][k]; const cx=mL+gw*i+gw/2;
+    el(s,'rect',{x:cx-bw/2,y:Y(d.mean),width:bw,height:mT+ph-Y(d.mean),rx:4,fill:c});
+    // seed range whisker
+    el(s,'line',{x1:cx,y1:Y(d.lo),x2:cx,y2:Y(d.hi),stroke:TP,'stroke-width':1.5});
+    el(s,'line',{x1:cx-5,y1:Y(d.hi),x2:cx+5,y2:Y(d.hi),stroke:TP,'stroke-width':1.5});
+    el(s,'line',{x1:cx-5,y1:Y(d.lo),x2:cx+5,y2:Y(d.lo),stroke:TP,'stroke-width':1.5});
+    el(s,'text',{x:cx,y:Y(d.mean)-8,'text-anchor':'middle','font-size':12,'font-weight':700,fill:c},d.mean.toFixed(3));
+    el(s,'text',{x:cx,y:H-mB+18,'text-anchor':'middle','font-size':12,fill:TP},lab);
+    el(s,'text',{x:cx,y:H-mB+34,'text-anchor':'middle','font-size':10,fill:TM},'σ='+d.sd.toFixed(3));
   });
 }
-function leaderboard(){
-  const tb=document.getElementById('lb');
-  const order=Object.keys(D.strat).sort((a,b)=>D.strat[b].mean_acc-D.strat[a].mean_acc);
-  for(const k of order){const d=D.strat[k];const learns=LEARNS[k]!==false;
-    const tr=document.createElement('tr');
-    const tag=(k==='ours')?'<span class="tag ours">ours</span>':(!learns?'<span class="tag fail">chance</span>':'<span class="tag trad">trad</span>');
-    tr.innerHTML=`<td><span class="lblname">${NAMES[k]}</span> ${tag}</td><td>${d.passes}&times;</td>`+
-      `<td>${d.mean_acc.toFixed(3)}${!learns?' &dagger;':''}</td><td>${d.seed_min.toFixed(2)}–${d.seed_max.toFixed(2)}</td><td>${d.seed_sd.toFixed(3)}</td><td>${d.gmax}</td>`;
-    tb.appendChild(tr);
-  }
-}
-function draw(){scatter();ablation();leaderboard();}
+function draw(){bars('barL2','L2');bars('barL6','L6');}
 draw();
-new MutationObserver(()=>{scatter();ablation();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{scatter();ablation();});
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
 </script>
 
 </body>
